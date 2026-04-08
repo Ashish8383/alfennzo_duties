@@ -1,0 +1,368 @@
+// screens/LoginScreen.js
+import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Input from '../components/Input';
+import useAuthStore from '../stores/authStore';
+import colors from '../utils/colors';
+import { isTablet, nz, nzVertical, rs } from '../utils/responsive';
+import useToast from '../utils/useToast';
+
+export default function LoginScreen({ navigation }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({});
+  const { login, isLoading, error, clearError } = useAuthStore();
+  const toast = useToast();
+
+  // Clear error when inputs change
+  useEffect(() => {
+    if (error) {
+      clearError();
+    }
+  }, [email, password]);
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'Please enter a valid email';
+    }
+    
+    if (!password) {
+      newErrors.password = 'Password is required';
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleLogin = async () => {
+    if (!validateForm()) {
+      toast.showError('Validation Error', 'Please check your inputs');
+      return;
+    }
+
+    const success = await login(email, password);
+
+    if (success) {
+      toast.showSuccess('Welcome!', `Hello ${email.split('@')[0]}`);
+      // Navigation will be handled by the root navigator based on auth state
+    } else {
+      toast.showError('Login Failed', error || 'Invalid email or password');
+    }
+  };
+
+  const handleForgotPassword = () => {
+    if (navigation?.navigate) {
+      navigation.navigate('ForgotPassword');
+    } else {
+      toast.showError('Coming Soon', 'Forgot password feature will be available soon');
+    }
+  };
+
+  return (
+    <>
+      <StatusBar style="dark" translucent={false} backgroundColor={colors.white} />
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Top Image - waiter.jpeg */}
+            <View style={styles.imageContainer}>
+              <Image
+                source={require('../assets/images/waiter.jpeg')}
+                style={styles.topImage}
+                resizeMode="contain"
+              />
+            </View>
+
+            {/* Title */}
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>Welcome Back!</Text>
+              <Text style={styles.subtitle}>Sign in to continue</Text>
+            </View>
+
+            <Input
+              label="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Enter your email"
+              error={errors.email}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              leftIcon={
+                <Ionicons name="mail-outline" size={20} color={colors.textLight} />
+              }
+            />
+
+            <Input
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Enter your password"
+              secureTextEntry={!showPassword}
+              error={errors.password}
+              leftIcon={
+                <Ionicons name="lock-closed-outline" size={20} color={colors.textLight} />
+              }
+              rightIcon={
+                <Ionicons
+                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                  size={20}
+                  color={colors.textLight}
+                />
+              }
+              onRightIconPress={() => setShowPassword(!showPassword)}
+            />
+
+            {/* Remember Me & Forgot Password Row */}
+            <View style={styles.rowContainer}>
+              <TouchableOpacity
+                style={styles.checkboxContainer}
+                onPress={() => setRememberMe(!rememberMe)}
+                activeOpacity={0.7}
+              >
+                <View style={[
+                  styles.checkbox,
+                  rememberMe && styles.checkboxChecked
+                ]}>
+                  {rememberMe && (
+                    <Ionicons name="checkmark" size={12} color={colors.white} />
+                  )}
+                </View>
+                <Text style={styles.rememberText}>Remember me</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleForgotPassword}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.forgotText}>Forgot password?</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Error Message */}
+            {error && !isLoading && (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={16} color={colors.error} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            {/* Login Button */}
+            <TouchableOpacity
+              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+              onPress={handleLogin}
+              activeOpacity={0.85}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={colors.white} size="small" />
+              ) : (
+                <Text style={styles.loginButtonText}>Log In</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Demo Credentials Hint */}
+            <View style={styles.demoContainer}>
+              <Text style={styles.demoTitle}>Demo Credentials:</Text>
+              <Text style={styles.demoText}>Email: shubhamk5928@gmail.com</Text>
+              <Text style={styles.demoText}>Password: 12345678</Text>
+            </View>
+
+            {/* Terms Text */}
+            <View style={styles.termsContainer}>
+              <Text style={styles.termsText}>
+                By continuing, I accept the{' '}
+                <Text style={styles.termsLink}>Terms & Conditions</Text>
+                {' '}and{' '}
+                <Text style={styles.termsLink}>Privacy Policy</Text>
+              </Text>
+            </View>
+
+            {/* Bottom Spacing */}
+            <View style={styles.bottomSpacing} />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.white,
+    paddingTop: rs(30)
+  },
+  container: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingHorizontal: nz(24),
+    paddingTop: nzVertical(10),
+    paddingBottom: nzVertical(30),
+  },
+  imageContainer: {
+    width: '100%',
+    height: nzVertical(isTablet ? 240 : 200),
+    marginBottom: nzVertical(20),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topImage: {
+    width: '100%',
+    height: '100%',
+  },
+  titleContainer: {
+    marginBottom: nzVertical(28),
+  },
+  title: {
+    fontSize: rs(isTablet ? 38 : 30),
+    fontWeight: '700',
+    color: colors.black,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'System',
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: rs(14),
+    color: colors.textLight,
+    marginTop: nzVertical(4),
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  rowContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: nzVertical(4),
+    marginBottom: nzVertical(28),
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: nz(isTablet ? 20 : 18),
+    height: nz(isTablet ? 20 : 18),
+    borderRadius: nz(4),
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    marginRight: nz(8),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  rememberText: {
+    fontSize: rs(isTablet ? 15 : 13),
+    color: colors.text,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  forgotText: {
+    fontSize: rs(13),
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFEBEE',
+    borderRadius: nz(8),
+    paddingHorizontal: nz(12),
+    paddingVertical: nzVertical(10),
+    marginBottom: nzVertical(16),
+    gap: nz(8),
+  },
+  errorText: {
+    fontSize: rs(12),
+    color: colors.error,
+    flex: 1,
+  },
+  loginButton: {
+    backgroundColor: colors.primary,
+    borderRadius: nz(12),
+    marginBottom: nzVertical(20),
+    paddingVertical: nzVertical(16),
+    alignItems: 'center',
+    shadowColor: '#0B735F',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  loginButtonDisabled: {
+    opacity: 0.7,
+  },
+  loginButtonText: {
+    fontSize: rs(16),
+    fontWeight: '700',
+    color: colors.white,
+  },
+  demoContainer: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: nz(8),
+    padding: nz(12),
+    marginBottom: nzVertical(20),
+    alignItems: 'center',
+  },
+  demoTitle: {
+    fontSize: rs(12),
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: nzVertical(4),
+  },
+  demoText: {
+    fontSize: rs(11),
+    color: colors.textLight,
+  },
+  termsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: nz(12),
+  },
+  termsText: {
+    fontSize: rs(isTablet ? 13 : 11),
+    color: colors.textLighter,
+    textAlign: 'center',
+    lineHeight: nzVertical(18),
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  termsLink: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  bottomSpacing: {
+    height: nzVertical(20),
+  },
+});

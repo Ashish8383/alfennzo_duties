@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "1025748391482",
+    "firebase_url": "https://partner-console-sandbox-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "partner-console-sandbox",
+    "storage_bucket": "partner-console-sandbox.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1025748391482:android:18f4d6ab1738362bae4703",
+        "android_client_info": {
+          "package_name": "com.alfennzo.duties"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBCAb3YuP-T1GiygiPwZBpkOVVA8cLShzs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1025748391482:android:c7ca30078723eaafae4703",
+        "android_client_info": {
+          "package_name": "com.alfennzo.partner.dev.sandbox_partner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBCAb3YuP-T1GiygiPwZBpkOVVA8cLShzs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

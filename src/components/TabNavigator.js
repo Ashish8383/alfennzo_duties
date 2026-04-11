@@ -3,8 +3,8 @@ import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, {
-    useAnimatedStyle,
-    withSpring,
+  useAnimatedStyle,
+  withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/HomeScreen';

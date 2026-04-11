@@ -1,36 +1,291 @@
 // screens/ProfileScreen.js
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  Animated,
+  KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import useAuthStore from '../stores/authStore';
 import colors from '../utils/colors';
-import { isTablet, nz, nzVertical, rs } from '../utils/responsive';
+import { checkLocationPermission, checkNotificationPermission } from '../utils/Permissions';
+import { nz, nzVertical, rs } from '../utils/responsive';
 
-// ─── The header background color ─────────────────────────────────────────────
-// StatusBar backgroundColor must match this so the battery/wifi area
-// blends seamlessly with the page header on real devices.
 const HEADER_BG = '#FFFFFF';
 
-// ─── Menu config ──────────────────────────────────────────────────────────────
 const MENU_ITEMS = [
-  { key: 'earning',      label: 'My Earning',        icon: 'wallet-outline'              },
-  { key: 'notification', label: 'Notification',       icon: 'notifications-outline'       },
-  { key: 'privacy',      label: 'Privacy',            icon: 'shield-checkmark-outline'    },
-  { key: 'help',         label: 'Help',               icon: 'help-circle-outline'         },
-  { key: 'support',      label: 'Contact Support',    icon: 'chatbubble-ellipses-outline' },
-  { key: 'terms',        label: 'Terms & Conditions', icon: 'document-text-outline'       },
+  { key: 'permissions', label: 'Permissions', icon: 'key-outline' },
+  { key: 'shifts', label: 'Shift History', icon: 'time-outline' },
+  { key: 'privacy', label: 'Privacy', icon: 'shield-checkmark-outline' },
+  { key: 'support', label: 'Contact Support', icon: 'chatbubble-ellipses-outline' },
+  { key: 'terms', label: 'Terms & Conditions', icon: 'document-text-outline' },
 ];
 
-// ─── Menu Row ─────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Parse DD/MM/YYYY to Date object */
+const parseDOB = (dobString) => {
+  if (!dobString) return new Date(2000, 0, 1);
+  const parts = dobString.split('/');
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    const date = new Date(year, month, day);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  }
+  return new Date(2000, 0, 1);
+};
+
+/** Normalise DD/MM/YYYY  ↔  display string */
+const formatDOBDisplay = (raw) => {
+  if (!raw) return '';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return raw;
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+};
+
+/** Auto-insert slashes as user types DOB */
+const maskDOB = (text) => {
+  const digits = text.replace(/\D/g, '');
+  let masked = '';
+  for (let i = 0; i < Math.min(digits.length, 8); i++) {
+    if (i === 2 || i === 4) masked += '/';
+    masked += digits[i];
+  }
+  return masked;
+};
+
+// ─── Edit Profile Popup Modal ─────────────────────────────────────────────────
+function EditProfilePopup({ visible, user, onClose, onSave, isSaving }) {
+  const [fullName, setFullName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [phone, setPhone] = useState('');
+  const [errors, setErrors] = useState({});
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      setFullName(user?.fullName || user?.name || '');
+      setDateOfBirth(formatDOBDisplay(user?.dateOfBirth));
+      setPhone(user?.phone ? String(user.phone) : '');
+      setErrors({});
+
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          bounciness: 8,
+          speed: 14,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      scaleAnim.setValue(0.9);
+      fadeAnim.setValue(0);
+    }
+  }, [visible]);
+
+  const validate = () => {
+    const e = {};
+    if (!fullName.trim()) e.fullName = 'Name is required';
+    if (phone && !/^\d{10}$/.test(phone.trim())) e.phone = 'Enter a valid 10-digit number';
+    if (dateOfBirth && !/^\d{2}\/\d{2}\/\d{4}$/.test(dateOfBirth))
+      e.dateOfBirth = 'Use DD/MM/YYYY format';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSave = () => {
+    if (!validate()) return;
+    onSave({
+      fullName: fullName.trim(),
+      dateOfBirth: dateOfBirth.trim() || undefined,
+      phone: phone.trim() || undefined,
+    });
+  };
+
+  const handleConfirm = (selectedDate) => {
+    setDatePickerVisibility(false);
+    if (selectedDate) {
+      const dd = String(selectedDate.getDate()).padStart(2, '0');
+      const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const yyyy = selectedDate.getFullYear();
+      setDateOfBirth(`${dd}/${mm}/${yyyy}`);
+      setErrors((e) => ({ ...e, dateOfBirth: undefined }));
+    }
+  };
+
+  const hideDatePicker = () => {
+    setDatePickerVisibility(false);
+  };
+
+  if (!visible) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <KeyboardAvoidingView
+          style={popupStyles.overlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={onClose}
+          />
+
+          <Animated.View style={[popupStyles.popup, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+            <View style={popupStyles.popupHeader}>
+              <Text style={popupStyles.popupTitle}>Edit Profile</Text>
+              <TouchableOpacity onPress={onClose} disabled={isSaving} style={popupStyles.closeBtn}>
+                <Ionicons name="close" size={nz(22)} color={colors.textLight} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={popupStyles.divider} />
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={popupStyles.scrollContent}
+            >
+              {/* Full Name */}
+              <View style={popupStyles.fieldGroup}>
+                <Text style={popupStyles.label}>Full Name <Text style={popupStyles.required}>*</Text></Text>
+                <View style={[popupStyles.inputWrap, errors.fullName && popupStyles.inputError]}>
+                  <Ionicons name="person-outline" size={nz(18)} color={colors.textLighter} style={popupStyles.inputIcon} />
+                  <TextInput
+                    style={popupStyles.input}
+                    value={fullName}
+                    onChangeText={(t) => { setFullName(t); setErrors((e) => ({ ...e, fullName: undefined })); }}
+                    placeholder="Enter your full name"
+                    placeholderTextColor={colors.textLighter}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                  />
+                </View>
+                {errors.fullName && <Text style={popupStyles.errorText}>{errors.fullName}</Text>}
+              </View>
+
+              {/* Date of Birth */}
+              <View style={popupStyles.fieldGroup}>
+                <Text style={popupStyles.label}>Date of Birth</Text>
+                <View style={[popupStyles.inputWrap, errors.dateOfBirth && popupStyles.inputError]}>
+                  <TouchableOpacity onPress={() => setDatePickerVisibility(true)} style={popupStyles.calendarIconBtn}>
+                    <Ionicons name="calendar-outline" size={nz(18)} color={colors.textLighter} />
+                  </TouchableOpacity>
+                  <TextInput
+                    style={popupStyles.input}
+                    value={dateOfBirth}
+                    onChangeText={(t) => {
+                      setDateOfBirth(maskDOB(t));
+                      setErrors((e) => ({ ...e, dateOfBirth: undefined }));
+                    }}
+                    placeholder="DD/MM/YYYY"
+                    placeholderTextColor={colors.textLighter}
+                    keyboardType="numeric"
+                    maxLength={10}
+                    returnKeyType="next"
+                  />
+                  {dateOfBirth.length > 0 && (
+                    <TouchableOpacity onPress={() => setDateOfBirth('')} style={popupStyles.clearIconBtn}>
+                      <Ionicons name="close-circle" size={nz(16)} color={colors.textLighter} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {errors.dateOfBirth
+                  ? <Text style={popupStyles.errorText}>{errors.dateOfBirth}</Text>
+                  : <Text style={popupStyles.hint}>Optional — format: DD/MM/YYYY</Text>}
+              </View>
+
+              {/* Phone */}
+              <View style={popupStyles.fieldGroup}>
+                <Text style={popupStyles.label}>Phone Number</Text>
+                <View style={[popupStyles.inputWrap, errors.phone && popupStyles.inputError]}>
+                  <Ionicons name="call-outline" size={nz(18)} color={colors.textLighter} style={popupStyles.inputIcon} />
+                  <TextInput
+                    style={popupStyles.input}
+                    value={phone}
+                    onChangeText={(t) => { setPhone(t.replace(/\D/g, '')); setErrors((e) => ({ ...e, phone: undefined })); }}
+                    placeholder="10-digit mobile number"
+                    placeholderTextColor={colors.textLighter}
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    returnKeyType="done"
+                    onSubmitEditing={handleSave}
+                  />
+                </View>
+                {errors.phone && <Text style={popupStyles.errorText}>{errors.phone}</Text>}
+              </View>
+            </ScrollView>
+
+            <View style={popupStyles.btnRow}>
+              <TouchableOpacity style={popupStyles.cancelBtn} onPress={onClose} disabled={isSaving} activeOpacity={0.7}>
+                <Text style={popupStyles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[popupStyles.saveBtn, isSaving && { opacity: 0.7 }]}
+                onPress={handleSave}
+                disabled={isSaving}
+                activeOpacity={0.85}
+              >
+                {isSaving
+                  ? <ActivityIndicator color={colors.white} size="small" />
+                  : <Text style={popupStyles.saveText}>Save Changes</Text>}
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+
+          {/* Date Picker Modal */}
+          <DateTimePickerModal
+            isVisible={isDatePickerVisible}
+            mode="date"
+            onConfirm={handleConfirm}
+            onCancel={hideDatePicker}
+            date={dateOfBirth ? parseDOB(dateOfBirth) : new Date(2000, 0, 1)}
+            maximumDate={new Date()}
+            display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          />
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Menu Item ────────────────────────────────────────────────────────────────
 function MenuItem({ item, onPress, isLast }) {
   return (
     <>
@@ -48,111 +303,144 @@ function MenuItem({ item, onPress, isLast }) {
   );
 }
 
-// ─── ProfileScreen ────────────────────────────────────────────────────────────
+// ─── Profile Screen ───────────────────────────────────────────────────────────
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuthStore();
-  
-  // Floating tab bar height — match BottomTabNavigator
+  const { user, logout, fetchProfile, updateUserProfile } = useAuthStore();
+  const navigation = useNavigation();
+
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState({ location: false, notification: false });
+
   const TAB_BAR_HEIGHT = nzVertical(72) + (insets.bottom > 0 ? insets.bottom : nzVertical(12));
 
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    setProfileLoading(true);
+    await fetchProfile();
+    setProfileLoading(false);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      checkPermissions();
+      const unsubscribe = navigation.addListener('permissionsUpdated', checkPermissions);
+      return unsubscribe;
+    }, [navigation])
+  );
+
+  const checkPermissions = async () => {
+    const locationStatus = await checkLocationPermission();
+    const notificationStatus = await checkNotificationPermission();
+    setPermissionStatus({ location: locationStatus, notification: notificationStatus });
+  };
+
+  const handleSaveProfile = async (data) => {
+    setIsSaving(true);
+    const result = await updateUserProfile(data);
+    setIsSaving(false);
+    if (result?.success) {
+      setEditModalVisible(false);
+      Alert.alert('Success', result.message || 'Profile updated successfully');
+    } else {
+      Alert.alert('Update Failed', result?.error || 'Please try again.');
+    }
+  };
+
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: () => {
-            logout();
-          },
-        },
-      ],
-      { cancelable: true }
-    );
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: () => logout() },
+    ]);
   };
 
   const handleMenuItemPress = (itemKey) => {
     switch (itemKey) {
-      case 'earning':
-        // Navigate to earnings screen
-        Alert.alert('My Earnings', 'Coming soon!');
-        break;
-      case 'notification':
-        Alert.alert('Notifications', 'Coming soon!');
-        break;
-      case 'privacy':
-        Alert.alert('Privacy', 'Coming soon!');
-        break;
-      case 'help':
-        Alert.alert('Help', 'Coming soon!');
-        break;
-      case 'support':
-        Alert.alert('Contact Support', 'support@example.com');
-        break;
-      case 'terms':
-        Alert.alert('Terms & Conditions', 'Coming soon!');
-        break;
-      default:
-        break;
+      case 'shifts': navigation.navigate('ShiftHistory'); break;
+      case 'permissions': navigation.navigate('PermissionStatus'); break;
+      case 'privacy': Alert.alert('Privacy', 'Coming soon!'); break;
+      case 'support': Alert.alert('Contact Support', 'support@example.com'); break;
+      case 'terms': Alert.alert('Terms & Conditions', 'Coming soon!'); break;
+      default: break;
     }
   };
 
-  // Get user's display name
-  const displayName = user?.name || user?.username || 'User';
-  const phoneNumber = user?.phone || '+91 9876543210';
+  const displayName = user?.fullName || user?.name || 'Waiter';
+  const phoneNumber = user?.phone ? String(user.phone) : '—';
+  const hasMissing = !permissionStatus.location || !permissionStatus.notification;
 
   return (
     <>
-      <StatusBar
-        style="dark"
-        translucent={false}
-        backgroundColor={HEADER_BG}
-      />
+      <StatusBar style="dark" translucent={false} backgroundColor={HEADER_BG} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: HEADER_BG }]} edges={['top', 'left', 'right']}>
 
-      <SafeAreaView
-        style={[styles.safeArea, { backgroundColor: HEADER_BG }]}
-        edges={['top', 'left', 'right']}
-      >
         <View style={[styles.header, { backgroundColor: HEADER_BG }]}>
           <Text style={styles.headerTitle}>Profile</Text>
+          {profileLoading && (
+            <ActivityIndicator size="small" color={colors.primary} style={styles.headerLoader} />
+          )}
         </View>
 
         <View style={styles.body}>
           <ScrollView
             style={styles.scroll}
-            contentContainerStyle={[
-              styles.scrollContent,
-              { paddingBottom: TAB_BAR_HEIGHT + nzVertical(16) },
-            ]}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: TAB_BAR_HEIGHT + nzVertical(16) }]}
             showsVerticalScrollIndicator={false}
-            bounces={Platform.OS === 'ios'}
           >
+            {hasMissing && (
+              <TouchableOpacity style={styles.warningBanner} onPress={() => navigation.navigate('PermissionStatus')}>
+                <Ionicons name="warning" size={20} color={colors.warning} />
+                <View style={styles.warningContent}>
+                  <Text style={styles.warningTitle}>Permissions Required</Text>
+                  <Text style={styles.warningMessage}>
+                    {!permissionStatus.location && !permissionStatus.notification
+                      ? 'Location & Notification access needed'
+                      : !permissionStatus.location
+                        ? 'Location access needed'
+                        : 'Notification access needed'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+              </TouchableOpacity>
+            )}
+
             <View style={styles.avatarCard}>
               <View style={styles.avatarCircle}>
                 <View style={styles.avatarHead} />
                 <View style={styles.avatarBody} />
               </View>
+
               <View style={styles.avatarInfo}>
-                <Text style={styles.avatarName}>{displayName}</Text>
+                <Text style={styles.avatarName} numberOfLines={1}>{displayName}</Text>
                 <View style={styles.phoneRow}>
-                  <Ionicons
-                    name="call-outline"
-                    size={nz(14)}
-                    color={colors.textLight}
-                    style={{ marginRight: nz(4) }}
-                  />
+                  <Ionicons name="call-outline" size={nz(14)} color={colors.textLight} style={{ marginRight: nz(4) }} />
                   <Text style={styles.avatarPhone}>{phoneNumber}</Text>
                 </View>
+                {user?.email ? (
+                  <View style={[styles.phoneRow, { marginTop: nzVertical(2) }]}>
+                    <Ionicons name="mail-outline" size={nz(14)} color={colors.textLight} style={{ marginRight: nz(4) }} />
+                    <Text style={styles.avatarPhone} numberOfLines={1}>{user.email}</Text>
+                  </View>
+                ) : null}
               </View>
+
+              <TouchableOpacity
+                style={styles.editIconBtn}
+                onPress={() => setEditModalVisible(true)}
+                activeOpacity={0.75}
+                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+              >
+                <View style={styles.editIconWrap}>
+                  <Ionicons name="pencil" size={nz(15)} color={colors.primary} />
+                </View>
+              </TouchableOpacity>
             </View>
 
-            {/* Stats row */}
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>142</Text>
@@ -160,8 +448,10 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>₹18,400</Text>
-                <Text style={styles.statLabel}>Earnings</Text>
+                <Text style={styles.statValue}>
+                  {user?.salary ? `₹${Number(user.salary).toLocaleString('en-IN')}` : '—'}
+                </Text>
+                <Text style={styles.statLabel}>Salary</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
@@ -170,7 +460,6 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {/* Menu */}
             <View style={styles.menuCard}>
               {MENU_ITEMS.map((item, idx) => (
                 <MenuItem
@@ -182,12 +471,7 @@ export default function ProfileScreen() {
               ))}
             </View>
 
-            {/* Logout */}
-            <TouchableOpacity 
-              style={styles.logoutBtn} 
-              onPress={handleLogout}
-              activeOpacity={0.75}
-            >
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.75}>
               <View style={styles.logoutIconWrap}>
                 <Ionicons name="log-out-outline" size={nz(20)} color="#E53935" />
               </View>
@@ -196,45 +480,202 @@ export default function ProfileScreen() {
           </ScrollView>
         </View>
       </SafeAreaView>
+
+      <EditProfilePopup
+        visible={editModalVisible}
+        user={user}
+        onClose={() => !isSaving && setEditModalVisible(false)}
+        onSave={handleSaveProfile}
+        isSaving={isSaving}
+      />
     </>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  safeArea: {
+// ─── Popup Modal Styles ───────────────────────────────────────────────────────
+const popupStyles = StyleSheet.create({
+  overlay: {
     flex: 1,
-    // backgroundColor set inline above to match HEADER_BG
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: nz(20),
   },
+  popup: {
+    backgroundColor: colors.white,
+    borderRadius: nz(20),
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  popupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: nz(20),
+    paddingTop: nzVertical(20),
+    paddingBottom: nzVertical(12),
+  },
+  popupTitle: {
+    fontSize: rs(18),
+    fontWeight: '700',
+    color: colors.black,
+  },
+  closeBtn: {
+    padding: nz(4),
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginBottom: nzVertical(16),
+    marginHorizontal: nz(20),
+  },
+  scrollContent: {
+    paddingHorizontal: nz(20),
+    paddingBottom: nzVertical(20),
+  },
+  fieldGroup: {
+    marginBottom: nzVertical(18),
+  },
+  label: {
+    fontSize: rs(13),
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: nzVertical(8),
+  },
+  required: {
+    color: '#E53935',
+  },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: nz(12),
+    paddingHorizontal: nz(12),
+    height: nzVertical(50),
+    backgroundColor: '#FAFAFA',
+  },
+  inputError: {
+    borderColor: '#E53935',
+    backgroundColor: '#FFF5F5',
+  },
+  inputIcon: {
+    marginRight: nz(10),
+  },
+  calendarIconBtn: {
+    marginRight: nz(10),
+    padding: nz(4),
+  },
+  clearIconBtn: {
+    padding: nz(4),
+  },
+  input: {
+    flex: 1,
+    fontSize: rs(14),
+    color: colors.black,
+    paddingVertical: 0,
+  },
+  errorText: {
+    fontSize: rs(11),
+    color: '#E53935',
+    marginTop: nzVertical(4),
+    marginLeft: nz(2),
+  },
+  hint: {
+    fontSize: rs(11),
+    color: colors.textLighter,
+    marginTop: nzVertical(4),
+    marginLeft: nz(2),
+  },
+  btnRow: {
+    flexDirection: 'row',
+    gap: nz(12),
+    paddingHorizontal: nz(20),
+    paddingTop: nzVertical(8),
+    paddingBottom: nzVertical(20),
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  cancelBtn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: nz(12),
+    paddingVertical: nzVertical(14),
+    alignItems: 'center',
+  },
+  cancelText: {
+    fontSize: rs(14),
+    fontWeight: '600',
+    color: colors.textLight,
+  },
+  saveBtn: {
+    flex: 2,
+    backgroundColor: colors.primary,
+    borderRadius: nz(12),
+    paddingVertical: nzVertical(14),
+    alignItems: 'center',
+    shadowColor: colors.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  saveText: {
+    fontSize: rs(14),
+    fontWeight: '700',
+    color: colors.white,
+  },
+});
 
-  // Title bar
+// ─── Screen Styles ────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  safeArea: { flex: 1 },
   header: {
     paddingTop: nzVertical(8),
     paddingBottom: nzVertical(14),
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   headerTitle: {
-    fontSize: rs(isTablet ? 22 : 18),
+    fontSize: rs(18),
     fontWeight: '700',
     color: colors.black,
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'System',
   },
-
-  // Body
-  body: {
-    flex: 1,
-    backgroundColor: '#F5F6FA',
+  headerLoader: {
+    position: 'absolute',
+    right: nz(16),
   },
+  body: { flex: 1, backgroundColor: '#F5F6FA' },
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: nz(16),
     paddingTop: nzVertical(20),
     gap: nzVertical(14),
   },
-
-  // Avatar card
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: (colors.warning || '#FB8C00') + '20',
+    padding: nz(12),
+    borderRadius: nz(12),
+    gap: nz(12),
+  },
+  warningContent: { flex: 1 },
+  warningTitle: {
+    fontSize: rs(14),
+    fontWeight: '600',
+    color: colors.warning || '#FB8C00',
+    marginBottom: nzVertical(2),
+  },
+  warningMessage: { fontSize: rs(12), color: colors.textLight },
   avatarCard: {
     backgroundColor: colors.white,
     borderRadius: nz(16),
@@ -257,45 +698,33 @@ const styles = StyleSheet.create({
     marginRight: nz(14),
   },
   avatarHead: {
-    width: nz(24),
-    height: nz(24),
-    borderRadius: nz(12),
-    backgroundColor: '#5C3D11',
-    marginBottom: nz(2),
+    width: nz(24), height: nz(24), borderRadius: nz(12),
+    backgroundColor: '#5C3D11', marginBottom: nz(2),
   },
   avatarBody: {
-    width: nz(40),
-    height: nz(28),
-    borderRadius: nz(20),
+    width: nz(40), height: nz(28), borderRadius: nz(20),
     backgroundColor: '#5C3D11',
   },
   avatarInfo: { flex: 1 },
   avatarName: {
-    fontSize: rs(18),
+    fontSize: rs(17),
     fontWeight: '700',
     color: colors.black,
     marginBottom: nzVertical(4),
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'System',
   },
-  phoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarPhone: {
-    fontSize: rs(13),
-    color: colors.textLight,
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
-  },
-  editBtn: {
-    width: nz(36),
-    height: nz(36),
-    borderRadius: nz(18),
+  phoneRow: { flexDirection: 'row', alignItems: 'center' },
+  avatarPhone: { fontSize: rs(13), color: colors.textLight },
+  editIconBtn: { marginLeft: nz(8) },
+  editIconWrap: {
+    width: nz(34),
+    height: nz(34),
+    borderRadius: nz(17),
     backgroundColor: colors.primary + '15',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
   },
-
-  // Stats
   statsRow: {
     backgroundColor: colors.white,
     borderRadius: nz(16),
@@ -307,28 +736,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: rs(16),
-    fontWeight: '700',
-    color: colors.black,
-    marginBottom: nzVertical(2),
-  },
-  statLabel: {
-    fontSize: rs(11),
-    color: colors.textLighter,
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
-  },
-  statDivider: {
-    width: 1,
-    height: nzVertical(32),
-    backgroundColor: colors.border,
-  },
-
-  // Menu
+  statItem: { flex: 1, alignItems: 'center' },
+  statValue: { fontSize: rs(15), fontWeight: '700', color: colors.black, marginBottom: nzVertical(2) },
+  statLabel: { fontSize: rs(11), color: colors.textLighter },
+  statDivider: { width: 1, height: nzVertical(32), backgroundColor: colors.border },
   menuCard: {
     backgroundColor: colors.white,
     borderRadius: nz(16),
@@ -344,32 +755,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: nzVertical(15),
   },
-  menuLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: nz(12),
-  },
+  menuLeft: { flexDirection: 'row', alignItems: 'center', gap: nz(12) },
   menuIconWrap: {
-    width: nz(36),
-    height: nz(36),
-    borderRadius: nz(10),
+    width: nz(36), height: nz(36), borderRadius: nz(10),
     backgroundColor: colors.primary + '12',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
-  menuLabel: {
-    fontSize: rs(14),
-    color: colors.black,
-    fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
-  },
-  menuDivider: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginLeft: nz(48),
-  },
-
-  // Logout
+  menuLabel: { fontSize: rs(14), color: colors.black, fontWeight: '500' },
+  menuDivider: { height: 1, backgroundColor: '#F0F0F0', marginLeft: nz(48) },
   logoutBtn: {
     backgroundColor: colors.white,
     borderRadius: nz(16),
@@ -384,17 +777,9 @@ const styles = StyleSheet.create({
     marginBottom: nzVertical(20),
   },
   logoutIconWrap: {
-    width: nz(36),
-    height: nz(36),
-    borderRadius: nz(10),
+    width: nz(36), height: nz(36), borderRadius: nz(10),
     backgroundColor: '#FFEBEE',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
-  logoutText: {
-    fontSize: rs(15),
-    fontWeight: '700',
-    color: '#E53935',
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
-  },
+  logoutText: { fontSize: rs(15), fontWeight: '700', color: '#E53935' },
 });

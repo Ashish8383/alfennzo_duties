@@ -1,4 +1,4 @@
-// screens/LoginScreen.js
+// src/screens/LoginScreen.js
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -15,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Input from '../components/Input';
+import OTPVerificationModal from '../components/OTPVerificationModal';
 import useAuthStore from '../stores/authStore';
 import colors from '../utils/colors';
 import { isTablet, nz, nzVertical, rs } from '../utils/responsive';
@@ -23,10 +25,11 @@ import useToast from '../utils/useToast';
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [tempEmail, setTempEmail] = useState('');
+  const { login, verifyOTP, resendOTP, isLoading, error, clearError, tempEmail: storeTempEmail } = useAuthStore();
   const toast = useToast();
 
   // Clear error when inputs change
@@ -36,21 +39,29 @@ export default function LoginScreen({ navigation }) {
     }
   }, [email, password]);
 
+  // Check if OTP modal should be shown
+  useEffect(() => {
+    if (storeTempEmail) {
+      setTempEmail(storeTempEmail);
+      setShowOTPModal(true);
+    }
+  }, [storeTempEmail]);
+
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = 'Please enter a valid email';
     }
-    
+
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -61,23 +72,59 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
-    const success = await login(email, password);
+    const result = await login(email, password);
+
+    if (result?.requiresOTP) {
+      // OTP modal will show automatically via useEffect
+      toast.showSuccess('OTP Sent', result.message || 'Verification code sent to your email');
+    } else if (result?.success) {
+      toast.showSuccess('Welcome!', `Hello ${email.split('@')[0]}`);
+    } else if (result?.error) {
+      toast.showError('Login Failed', result.error);
+    }
+  };
+
+  const handleVerifyOTP = async (otp) => {
+    const success = await verifyOTP(otp);
 
     if (success) {
-      toast.showSuccess('Welcome!', `Hello ${email.split('@')[0]}`);
-      // Navigation will be handled by the root navigator based on auth state
+      toast.showSuccess('Success', 'Login successful!');
+      setShowOTPModal(false);
+      setTempEmail('');
+      // Navigation will be handled by root navigator
     } else {
-      toast.showError('Login Failed', error || 'Invalid email or password');
+      toast.showError('Verification Failed', error || 'Invalid OTP');
     }
+  };
+
+  const handleResendOTP = async () => {
+    const success = await resendOTP(tempEmail);
+
+    if (success) {
+      toast.showSuccess('OTP Sent', 'New verification code sent to your email');
+    } else {
+      toast.showError('Failed', error || 'Could not resend OTP');
+    }
+  };
+
+  const handleCloseOTPModal = () => {
+    setShowOTPModal(false);
+    setTempEmail('');
+    clearError();
   };
 
   const handleForgotPassword = () => {
-    if (navigation?.navigate) {
-      navigation.navigate('ForgotPassword');
-    } else {
-      toast.showError('Coming Soon', 'Forgot password feature will be available soon');
-    }
+    toast.showError('Coming Soon', 'Forgot password feature will be available soon');
   };
+
+  // --- NEW: Function to open URLs ---
+  const openLink = (url) => {
+    Linking.openURL(url).catch((err) => {
+      console.error('Failed to open URL:', err);
+      toast.showError('Error', 'Could not open the link');
+    });
+  };
+  // ---------------------------------
 
   return (
     <>
@@ -142,24 +189,8 @@ export default function LoginScreen({ navigation }) {
               onRightIconPress={() => setShowPassword(!showPassword)}
             />
 
-            {/* Remember Me & Forgot Password Row */}
+            {/* Forgot Password Row - REMOVED Remember Me */}
             <View style={styles.rowContainer}>
-              <TouchableOpacity
-                style={styles.checkboxContainer}
-                onPress={() => setRememberMe(!rememberMe)}
-                activeOpacity={0.7}
-              >
-                <View style={[
-                  styles.checkbox,
-                  rememberMe && styles.checkboxChecked
-                ]}>
-                  {rememberMe && (
-                    <Ionicons name="checkmark" size={12} color={colors.white} />
-                  )}
-                </View>
-                <Text style={styles.rememberText}>Remember me</Text>
-              </TouchableOpacity>
-
               <TouchableOpacity
                 onPress={handleForgotPassword}
                 activeOpacity={0.7}
@@ -169,7 +200,7 @@ export default function LoginScreen({ navigation }) {
             </View>
 
             {/* Error Message */}
-            {error && !isLoading && (
+            {error && !isLoading && !showOTPModal && (
               <View style={styles.errorContainer}>
                 <Ionicons name="alert-circle" size={16} color={colors.error} />
                 <Text style={styles.errorText}>{error}</Text>
@@ -190,20 +221,21 @@ export default function LoginScreen({ navigation }) {
               )}
             </TouchableOpacity>
 
-            {/* Demo Credentials Hint */}
-            <View style={styles.demoContainer}>
-              <Text style={styles.demoTitle}>Demo Credentials:</Text>
-              <Text style={styles.demoText}>Email: shubhamk5928@gmail.com</Text>
-              <Text style={styles.demoText}>Password: 12345678</Text>
-            </View>
-
-            {/* Terms Text */}
+            {/* Terms Text - ADDED Links */}
             <View style={styles.termsContainer}>
               <Text style={styles.termsText}>
                 By continuing, I accept the{' '}
-                <Text style={styles.termsLink}>Terms & Conditions</Text>
+                <Text 
+                  style={styles.termsLink} 
+                  onPress={() => openLink('https://www.alfennzo.com/terms-and-conditions')}>
+                  Terms & Conditions
+                </Text>
                 {' '}and{' '}
-                <Text style={styles.termsLink}>Privacy Policy</Text>
+                <Text 
+                  style={styles.termsLink} 
+                  onPress={() => openLink('https://www.alfennzo.com/privacy-policy')}>
+                  Privacy Policy
+                </Text>
               </Text>
             </View>
 
@@ -212,6 +244,16 @@ export default function LoginScreen({ navigation }) {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      <OTPVerificationModal
+        visible={showOTPModal}
+        email={tempEmail}
+        onClose={handleCloseOTPModal}
+        onVerify={handleVerifyOTP}
+        onResend={handleResendOTP}
+        isLoading={isLoading}
+        error={error}
+      />
     </>
   );
 }
@@ -259,42 +301,21 @@ const styles = StyleSheet.create({
     marginTop: nzVertical(4),
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
+  // --- UPDATED STYLES: Removed checkbox styles, kept only row and forgot text ---
   rowContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end', // Aligns the Forgot Password to the right
     alignItems: 'center',
     marginTop: nzVertical(4),
     marginBottom: nzVertical(28),
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkbox: {
-    width: nz(isTablet ? 20 : 18),
-    height: nz(isTablet ? 20 : 18),
-    borderRadius: nz(4),
-    borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.white,
-    marginRight: nz(8),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  rememberText: {
-    fontSize: rs(isTablet ? 15 : 13),
-    color: colors.text,
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    width: '100%',
   },
   forgotText: {
     fontSize: rs(13),
     color: colors.primary,
     fontWeight: '600',
   },
+  // --------------------------------------------------------------------------
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -328,23 +349,6 @@ const styles = StyleSheet.create({
     fontSize: rs(16),
     fontWeight: '700',
     color: colors.white,
-  },
-  demoContainer: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: nz(8),
-    padding: nz(12),
-    marginBottom: nzVertical(20),
-    alignItems: 'center',
-  },
-  demoTitle: {
-    fontSize: rs(12),
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: nzVertical(4),
-  },
-  demoText: {
-    fontSize: rs(11),
-    color: colors.textLight,
   },
   termsContainer: {
     alignItems: 'center',

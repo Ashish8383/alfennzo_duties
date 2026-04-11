@@ -16,7 +16,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.alfenzo.waiter"
+      "bundleIdentifier": "com.alfennzo.duties"
     },
     "android": {
       "navigationBarColor": "#FFFFFF",
@@ -24,13 +24,41 @@
         "foregroundImage": "./src/assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.alfenzo.waiter"
+      "package": "com.alfennzo.duties",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "WAKE_LOCK"
+      ]
     },
     "web": {
       "favicon": "./src/assets/images/adaptive-icon.png"
     },
+     "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./src/assets/images/icon.png",
+          "color": "#0B735F",
+          "sounds": ["./src/assets/ordercoming.mp3"]
+        }
+      ]
+    ],
+    "notification": {
+      "icon": "./src/assets/images/icon.png",
+      "color": "#0B735F",
+      "iosDisplayInForeground": true,
+      "androidMode": "default",
+      "androidCollapsedKey": "updates"
+    },
     "experiments": {
       "tsconfigPaths": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id-here"
+      }
     }
   }
 }

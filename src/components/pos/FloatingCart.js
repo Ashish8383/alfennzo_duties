@@ -12,7 +12,7 @@ export default function FloatingCart({ itemsCount, total, onPress, bottomInset }
   if (itemsCount === 0) return null;
 
   return (
-    <Animated.View style={[styles.floatingCart, { bottom: bottomInset + nzVertical(16) }]}>
+    <Animated.View style={[styles.floatingCart, { bottom: bottomInset }]}>
       <View style={styles.floatingCartLeft}>
         <Text style={styles.floatingCartCount}>{itemsCount} items</Text>
         <Text style={styles.floatingCartTotal}>₹{Math.round(total)}</Text>

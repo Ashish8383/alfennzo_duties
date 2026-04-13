@@ -29,19 +29,21 @@
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "WAKE_LOCK"
+        "WAKE_LOCK",
+        "POST_NOTIFICATIONS"
       ]
     },
-    "web": {
-      "favicon": "./src/assets/images/adaptive-icon.png"
-    },
-     "plugins": [
+    "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
       [
         "expo-notifications",
         {
           "icon": "./src/assets/images/icon.png",
           "color": "#0B735F",
-          "sounds": ["./src/assets/ordercoming.mp3"]
+          "sounds": [
+            "./src/assets/notification.mp3"
+          ]
         }
       ]
     ],
@@ -49,11 +51,7 @@
       "icon": "./src/assets/images/icon.png",
       "color": "#0B735F",
       "iosDisplayInForeground": true,
-      "androidMode": "default",
-      "androidCollapsedKey": "updates"
-    },
-    "experiments": {
-      "tsconfigPaths": false
+      "androidMode": "default"
     },
     "extra": {
       "eas": {

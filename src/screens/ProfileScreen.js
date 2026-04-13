@@ -351,13 +351,31 @@ export default function ProfileScreen() {
       Alert.alert('Update Failed', result?.error || 'Please try again.');
     }
   };
+const handleLogout = () => {
+  Alert.alert('Logout', 'Are you sure you want to logout?', [
+    { text: 'Cancel', style: 'cancel' },
+    {
+      text: 'Logout',
+      style: 'destructive',
+      onPress: async () => {
+        const result = await logout();
 
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => logout() },
-    ]);
-  };
+        if (result?.blocked) {
+          Alert.alert(
+            'Cannot Logout',
+            result.message,
+            [
+              {
+                text: 'OK',
+                style: 'destructive',
+              },
+            ]
+          );
+        }
+      },
+    },
+  ]);
+};
 
   const handleMenuItemPress = (itemKey) => {
     switch (itemKey) {
@@ -417,10 +435,6 @@ export default function ProfileScreen() {
 
               <View style={styles.avatarInfo}>
                 <Text style={styles.avatarName} numberOfLines={1}>{displayName}</Text>
-                <View style={styles.phoneRow}>
-                  <Ionicons name="call-outline" size={nz(14)} color={colors.textLight} style={{ marginRight: nz(4) }} />
-                  <Text style={styles.avatarPhone}>{phoneNumber}</Text>
-                </View>
                 {user?.email ? (
                   <View style={[styles.phoneRow, { marginTop: nzVertical(2) }]}>
                     <Ionicons name="mail-outline" size={nz(14)} color={colors.textLight} style={{ marginRight: nz(4) }} />
@@ -439,25 +453,6 @@ export default function ProfileScreen() {
                   <Ionicons name="pencil" size={nz(15)} color={colors.primary} />
                 </View>
               </TouchableOpacity>
-            </View>
-
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>142</Text>
-                <Text style={styles.statLabel}>Delivered</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {user?.salary ? `₹${Number(user.salary).toLocaleString('en-IN')}` : '—'}
-                </Text>
-                <Text style={styles.statLabel}>Salary</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>4.9 ⭐</Text>
-                <Text style={styles.statLabel}>Rating</Text>
-              </View>
             </View>
 
             <View style={styles.menuCard}>

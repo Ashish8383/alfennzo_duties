@@ -17,3 +17,9 @@ export function navigateToHomePendingTab() {
 export function navigateToHomeOngoingTab() {
   navigate('Home', { initialTab: 1 });
 }
+
+export function navigateToLogin() {
+  if (navigationRef.isReady()) {
+    navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
+  }
+}

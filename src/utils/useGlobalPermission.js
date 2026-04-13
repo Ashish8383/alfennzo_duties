@@ -23,19 +23,19 @@ export const useGlobalPermissions = () => {
     setLoading(false);
   };
 
-  useEffect(() => {
-    // Initial check
-    checkPermissions();
+  // src/components/GlobalPermission.js — replace the AppState useEffect only
 
-    // Listen for app state changes
+  useEffect(() => {
+    if (!visible) return; // ✅ don't listen when modal is hidden
+
     const subscription = AppState.addEventListener('change', (nextAppState) => {
+      // Only re-check when user returns from Settings (could have granted there)
       if (nextAppState === 'active') {
         checkPermissions();
       }
     });
-
     return () => subscription.remove();
-  }, []);
+  }, [visible]); // ✅ re-subscribe only when visibility changes
 
   return { permissions, loading, checkPermissions };
 };

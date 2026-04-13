@@ -1,76 +1,100 @@
 // App.js
 import { NavigationContainer } from '@react-navigation/native';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 import GlobalPermissionModal from './src/components/GlobalPermission';
-import GlobalLocationTracker from './src/components/LocationTracker';
 import AppNavigator from './src/navigation/AppNavigator';
 import GlobalOrderSound from './src/utils/GlobalOrderSound';
 import InAppNotification from './src/utils/InAppNotification';
 import { navigationRef } from './src/utils/navigationRef';
-import { setupInAppNotificationListeners } from './src/utils/notification';
-import { checkLocationPermission, checkNotificationPermission } from './src/utils/Permissions';
+import {
+  initBadgeManagement,
+  requestNotificationPermissions,
+  setupInAppNotificationListeners,
+  setupNotificationChannel,
+} from './src/utils/notification';
 import { toastConfig } from './src/utils/toastConfig';
 
 export default function App() {
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const [initialCheckDone, setInitialCheckDone]       = useState(false);
 
+  const isCheckingRef     = useRef(false);
+  const permissionsOkRef  = useRef(false); // ✅ once granted, never re-prompt
+
+  // ── One-time setup ────────────────────────────────────────────────────────
   useEffect(() => {
+    setupNotificationChannel();
     checkAndShowModal();
   }, []);
 
+  // ── Only re-check on foreground IF permissions were previously denied ─────
+  // If they were already granted, we never bother the user again.
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') checkAndShowModal();
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (
+        nextState === 'active' &&
+        !permissionsOkRef.current &&   // ✅ skip if already granted
+        !isCheckingRef.current
+      ) {
+        checkAndShowModal();
+      }
     });
     return () => subscription.remove();
   }, []);
 
-  // ── THIS WAS MISSING ──────────────────────────────────────────────────────
-  // Registers the FCM foreground listener that calls showInAppNotification().
-  // Without this, notifications arrive at OS level but the in-app banner
-  // never fires because nothing is subscribed to addNotificationReceivedListener.
-  useEffect(() => {
-    const cleanup = setupInAppNotificationListeners();
-    return cleanup; // removes listeners on unmount
-  }, []);
-  // ─────────────────────────────────────────────────────────────────────────
-
   const checkAndShowModal = async () => {
-    const locationGranted     = await checkLocationPermission();
-    const notificationGranted = await checkNotificationPermission();
-    setShowPermissionModal(!locationGranted || !notificationGranted);
-    setInitialCheckDone(true);
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+
+    try {
+      const granted = await requestNotificationPermissions();
+
+      if (granted) {
+        permissionsOkRef.current = true;   // ✅ lock — never show modal again
+        setShowPermissionModal(false);
+      } else {
+        setShowPermissionModal(true);
+      }
+      setInitialCheckDone(true);
+    } finally {
+      isCheckingRef.current = false;
+    }
   };
 
-  const handlePermissionsGranted = () => checkAndShowModal();
-  const handleCloseModal = () => setShowPermissionModal(false);
+  // ── FCM listeners ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const cleanup = setupInAppNotificationListeners();
+    return cleanup;
+  }, []);
+
+  // ── Badge management ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const cleanup = initBadgeManagement();
+    return cleanup;
+  }, []);
 
   if (!initialCheckDone) return null;
 
   return (
     <SafeAreaProvider>
-      {/* 🔊 Plays ordercoming.mp3 in a loop whenever orders exist */}
       <GlobalOrderSound />
+      <NavigationContainer ref={navigationRef}>
+        <AppNavigator />
+        <Toast config={toastConfig} />
+      </NavigationContainer>
 
-      <GlobalLocationTracker>
-        <NavigationContainer ref={navigationRef}>
-          <AppNavigator />
-          <Toast config={toastConfig} />
-        </NavigationContainer>
-
-        <GlobalPermissionModal
-          visible={showPermissionModal}
-          onClose={handleCloseModal}
-          onPermissionsGranted={handlePermissionsGranted}
-        />
-      </GlobalLocationTracker>
-
-      {/* 🔔 In-app notification banner — renders above everything, tap navigates */}
+      <GlobalPermissionModal
+        visible={showPermissionModal}
+        onClose={() => setShowPermissionModal(false)}
+        onPermissionsGranted={() => {
+          permissionsOkRef.current = true;  
+          setShowPermissionModal(false);
+        }}
+      />
       <InAppNotification />
     </SafeAreaProvider>
   );

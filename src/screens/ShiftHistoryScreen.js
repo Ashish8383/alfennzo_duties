@@ -3,7 +3,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
     Animated,
     Platform,
     RefreshControl,
@@ -11,7 +10,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import useUIStore from '../stores/uiStore';
@@ -63,6 +62,264 @@ function parseDuration(seconds) {
     return `${s}s`;
 }
 
+// ─── Skeleton Components ──────────────────────────────────────────────────────
+const SkeletonBox = ({ width, height, borderRadius = nz(6), style }) => {
+    const shimmer = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        const loop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(shimmer, {
+                    toValue: 1,
+                    duration: 1200,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(shimmer, {
+                    toValue: 0,
+                    duration: 1200,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+        loop.start();
+        return () => loop.stop();
+    }, []);
+
+    const opacity = shimmer.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.3, 0.7],
+    });
+
+    return (
+        <Animated.View
+            style={[
+                {
+                    width,
+                    height,
+                    borderRadius,
+                    backgroundColor: '#E0E0E0',
+                    opacity,
+                },
+                style,
+            ]}
+        />
+    );
+};
+
+const SkeletonSummaryCard = ({ delay = 0 }) => (
+    <View style={skStyles.summaryCard}>
+        <SkeletonBox width={nz(40)} height={nz(40)} borderRadius={nz(12)} style={{ marginBottom: nzVertical(2) }} />
+        <SkeletonBox width={nz(50)} height={nzVertical(16)} borderRadius={nz(4)} style={{ marginBottom: nzVertical(4) }} />
+        <SkeletonBox width={nz(40)} height={nzVertical(10)} borderRadius={nz(4)} />
+    </View>
+);
+
+const SkeletonDayCell = () => (
+    <View style={skStyles.dayCell}>
+        <SkeletonBox width={nz(24)} height={nz(24)} borderRadius={nz(6)} />
+    </View>
+);
+
+const SkeletonCalendar = () => (
+    <View style={skStyles.calendarCard}>
+        {/* Day headers */}
+        <View style={skStyles.calendarDayHeaders}>
+            {DAYS_SHORT.map((_, idx) => (
+                <SkeletonBox key={idx} width={nz(30)} height={nzVertical(11)} borderRadius={nz(4)} />
+            ))}
+        </View>
+
+        {/* Day cells - 6 rows of 7 days */}
+        <View style={skStyles.calendarGrid}>
+            {Array.from({ length: 42 }).map((_, idx) => (
+                <SkeletonDayCell key={idx} />
+            ))}
+        </View>
+
+        {/* Legend */}
+        <View style={skStyles.legend}>
+            {[1, 2, 3].map((_, idx) => (
+                <View key={idx} style={skStyles.legendItem}>
+                    <SkeletonBox width={nz(10)} height={nz(10)} borderRadius={nz(5)} />
+                    <SkeletonBox width={nz(40)} height={nzVertical(11)} borderRadius={nz(4)} />
+                </View>
+            ))}
+        </View>
+    </View>
+);
+
+const SkeletonShiftItem = () => (
+    <View style={skStyles.shiftCard}>
+        <View style={skStyles.shiftCardHeader}>
+            <SkeletonBox width={nz(100)} height={nzVertical(14)} borderRadius={nz(4)} />
+            <SkeletonBox width={nz(70)} height={nzVertical(24)} borderRadius={nz(20)} />
+        </View>
+        <View style={skStyles.timesRow}>
+            <View style={skStyles.timeBlock}>
+                <SkeletonBox width={nz(50)} height={nzVertical(10)} borderRadius={nz(4)} style={{ marginBottom: nzVertical(4) }} />
+                <SkeletonBox width={nz(70)} height={nzVertical(14)} borderRadius={nz(4)} />
+            </View>
+            <SkeletonBox width={nz(20)} height={nzVertical(14)} borderRadius={nz(4)} />
+            <View style={skStyles.timeBlock}>
+                <SkeletonBox width={nz(50)} height={nzVertical(10)} borderRadius={nz(4)} style={{ marginBottom: nzVertical(4) }} />
+                <SkeletonBox width={nz(70)} height={nzVertical(14)} borderRadius={nz(4)} />
+            </View>
+            <SkeletonBox width={nz(60)} height={nzVertical(26)} borderRadius={nz(20)} />
+        </View>
+    </View>
+);
+
+const SkeletonShiftList = () => (
+    <View style={skStyles.listSection}>
+        <SkeletonBox width={nz(120)} height={nzVertical(13)} borderRadius={nz(4)} style={{ marginBottom: nzVertical(8), marginLeft: nz(4) }} />
+        {[1, 2, 3, 4].map((_, idx) => (
+            <View key={idx} style={skStyles.shiftRow}>
+                <View style={skStyles.timelineCol}>
+                    <SkeletonBox width={nz(12)} height={nz(12)} borderRadius={nz(6)} />
+                    <View style={{ flex: 1, width: 1.5, backgroundColor: '#E0E0E0', marginTop: nzVertical(4) }} />
+                </View>
+                <SkeletonShiftItem />
+            </View>
+        ))}
+    </View>
+);
+
+const ShiftHistorySkeleton = () => (
+    <ScrollView
+        style={skStyles.scroll}
+        contentContainerStyle={skStyles.scrollContent}
+        showsVerticalScrollIndicator={false}
+    >
+        {/* Month picker skeleton */}
+        <View style={skStyles.monthPicker}>
+            <SkeletonBox width={nz(36)} height={nz(36)} borderRadius={nz(10)} />
+            <SkeletonBox width={nz(120)} height={nzVertical(20)} borderRadius={nz(4)} />
+            <SkeletonBox width={nz(36)} height={nz(36)} borderRadius={nz(10)} />
+        </View>
+
+        {/* Summary cards */}
+        <View style={skStyles.summaryRow}>
+            {[0, 80, 160, 240].map((delay, idx) => (
+                <SkeletonSummaryCard key={idx} delay={delay} />
+            ))}
+        </View>
+
+        {/* Tab toggle */}
+        <View style={skStyles.tabToggle}>
+            <SkeletonBox width="48%" height={nzVertical(40)} borderRadius={nz(10)} />
+            <SkeletonBox width="48%" height={nzVertical(40)} borderRadius={nz(10)} />
+        </View>
+
+        {/* Calendar skeleton (default view) */}
+        <SkeletonCalendar />
+
+        {/* List skeleton (hidden initially) */}
+        <SkeletonShiftList />
+    </ScrollView>
+);
+
+const skStyles = StyleSheet.create({
+    scroll: { flex: 1, backgroundColor: '#F5F6FA' },
+    scrollContent: {
+        paddingHorizontal: nz(16),
+        paddingTop: nzVertical(16),
+        gap: nzVertical(14),
+    },
+    monthPicker: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: colors.white,
+        borderRadius: nz(16),
+        paddingHorizontal: nz(16),
+        paddingVertical: nzVertical(14),
+    },
+    summaryRow: {
+        flexDirection: 'row',
+        gap: nz(10),
+    },
+    summaryCard: {
+        flex: 1,
+        backgroundColor: colors.white,
+        borderRadius: nz(14),
+        paddingVertical: nzVertical(14),
+        alignItems: 'center',
+        gap: nzVertical(6),
+    },
+    tabToggle: {
+        flexDirection: 'row',
+        backgroundColor: colors.primary + '12',
+        borderRadius: nz(14),
+        padding: nz(4),
+        gap: nz(8),
+    },
+    calendarCard: {
+        backgroundColor: colors.white,
+        borderRadius: nz(20),
+        padding: nz(16),
+    },
+    calendarDayHeaders: {
+        flexDirection: 'row',
+        marginBottom: nzVertical(8),
+        justifyContent: 'space-around',
+    },
+    calendarGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+    },
+    dayCell: {
+        width: '14.28%',
+        aspectRatio: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    legend: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: nzVertical(14),
+        gap: nz(20),
+    },
+    legendItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: nz(6),
+    },
+    listSection: {
+        gap: nzVertical(4),
+    },
+    shiftRow: {
+        flexDirection: 'row',
+        gap: nz(10),
+        marginBottom: nzVertical(4),
+    },
+    timelineCol: {
+        alignItems: 'center',
+        paddingTop: nzVertical(16),
+        width: nz(16),
+    },
+    shiftCard: {
+        flex: 1,
+        backgroundColor: colors.white,
+        borderRadius: nz(16),
+        padding: nz(14),
+        marginBottom: nzVertical(8),
+    },
+    shiftCardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: nzVertical(12),
+    },
+    timesRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: nz(6),
+    },
+    timeBlock: {
+        flex: 1,
+    },
+});
+
 // ─── Animated Summary Card ────────────────────────────────────────────────────
 function SummaryCard({ icon, label, value, color, delay }) {
     const anim = useRef(new Animated.Value(0)).current;
@@ -96,7 +353,6 @@ function SummaryCard({ icon, label, value, color, delay }) {
 
 // ─── Calendar Day Cell ────────────────────────────────────────────────────────
 function DayCell({ day, status, isToday, onPress }) {
-    // status: 'present' | 'absent' | 'future' | 'empty'
     const isPast = status === 'present' || status === 'absent';
     const isPresent = status === 'present';
     const isAbsent = status === 'absent';
@@ -127,7 +383,7 @@ function DayCell({ day, status, isToday, onPress }) {
     );
 }
 
-// ─── Shift Day Group (all shifts for one date) ────────────────────────────────
+// ─── Shift Day Group ──────────────────────────────────────────────────────────
 function ShiftDayGroup({ date, shifts, index }) {
     const [expanded, setExpanded] = useState(true);
     const slideAnim = useRef(new Animated.Value(40)).current;
@@ -140,7 +396,6 @@ function ShiftDayGroup({ date, shifts, index }) {
         ]).start();
     }, []);
 
-    // Total seconds for the day
     const totalSeconds = shifts.reduce((sum, s) => sum + (s.durationSeconds || 0), 0);
 
     const d = new Date(date);
@@ -152,23 +407,18 @@ function ShiftDayGroup({ date, shifts, index }) {
             styles.shiftRow,
             { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         ]}>
-            {/* Timeline */}
             <View style={styles.timelineCol}>
                 <View style={styles.timelineDot} />
                 <View style={styles.timelineLine} />
             </View>
 
-            {/* Day card */}
             <View style={styles.shiftCard}>
-
-                {/* ── Day header ── */}
                 <TouchableOpacity
                     style={styles.dayGroupHeader}
                     onPress={() => setExpanded(e => !e)}
                     activeOpacity={0.7}
                 >
                     <View style={styles.dayGroupLeft}>
-                        {/* Day badge */}
                         <View style={styles.dayBadge}>
                             <Text style={styles.dayBadgeDay}>{dayLabel}</Text>
                             <Text style={styles.dayBadgeNum}>{pad(d.getDate())}</Text>
@@ -194,7 +444,6 @@ function ShiftDayGroup({ date, shifts, index }) {
                     />
                 </TouchableOpacity>
 
-                {/* ── Individual shifts ── */}
                 {expanded && (
                     <>
                         <View style={styles.shiftListDivider} />
@@ -203,7 +452,6 @@ function ShiftDayGroup({ date, shifts, index }) {
                             const clockOut = shift.clockOut ? new Date(shift.clockOut) : null;
                             return (
                                 <View key={shift._id}>
-                                    {/* Shift number label */}
                                     <View style={styles.shiftEntryHeader}>
                                         <View style={styles.shiftNumBadge}>
                                             <Text style={styles.shiftNumText}>#{idx + 1}</Text>
@@ -225,7 +473,6 @@ function ShiftDayGroup({ date, shifts, index }) {
                                         </View>
                                     </View>
 
-                                    {/* Clock in / out row */}
                                     <View style={styles.timesRow}>
                                         <View style={styles.timeBlock}>
                                             <Text style={styles.timeBlockLabel}>Clock In</Text>
@@ -265,7 +512,6 @@ function ShiftDayGroup({ date, shifts, index }) {
                                         </View>
                                     </View>
 
-                                    {/* Divider between shifts */}
                                     {idx < shifts.length - 1 && <View style={styles.shiftEntryDivider} />}
                                 </View>
                             );
@@ -311,14 +557,18 @@ export default function ShiftHistoryScreen({ navigation }) {
     const now = new Date();
     const [year, setYear] = useState(now.getFullYear());
     const [month, setMonth] = useState(now.getMonth());
-    const [activeTab, setActiveTab] = useState('calendar'); // 'calendar' | 'list'
+    const [activeTab, setActiveTab] = useState('calendar');
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-    const load = useCallback(() => {
+    const load = useCallback(async () => {
         const { start, end } = getMonthRange(year, month);
-        fetchDutyHistory(start, end);
+        await fetchDutyHistory(start, end);
+        setIsInitialLoad(false);
     }, [year, month]);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        load();
+    }, [load]);
 
     const goToPrev = () => {
         if (month === 0) { setYear(y => y - 1); setMonth(11); }
@@ -332,7 +582,6 @@ export default function ShiftHistoryScreen({ navigation }) {
         else setMonth(m => m + 1);
     };
 
-    // Build a map of date → shifts
     const shiftsByDate = useMemo(() => {
         const map = {};
         if (!dutyHistory?.history) return map;
@@ -344,14 +593,12 @@ export default function ShiftHistoryScreen({ navigation }) {
         return map;
     }, [dutyHistory]);
 
-    // Build calendar grid
     const calendarDays = useMemo(() => {
         const firstDay = new Date(year, month, 1).getDay();
         const total = getDaysInMonth(year, month);
         const today = toYMD(now);
         const cells = [];
 
-        // Empty leading cells
         for (let i = 0; i < firstDay; i++) cells.push({ day: null, status: 'empty' });
 
         for (let d = 1; d <= total; d++) {
@@ -370,7 +617,6 @@ export default function ShiftHistoryScreen({ navigation }) {
     const summary = dutyHistory?.summary;
     const history = dutyHistory?.history || [];
 
-    // Present/absent counts
     const presentDays = useMemo(() => {
         const today = toYMD(now);
         return Object.keys(shiftsByDate).filter(d => d <= today).length;
@@ -388,7 +634,6 @@ export default function ShiftHistoryScreen({ navigation }) {
 
     const absentDays = totalPastDays - presentDays;
 
-    // Add this helper after parseDuration
     function groupShiftsByDate(history) {
         const groups = {};
         history.forEach(shift => {
@@ -396,18 +641,40 @@ export default function ShiftHistoryScreen({ navigation }) {
             if (!groups[key]) groups[key] = [];
             groups[key].push(shift);
         });
-        // Return sorted array of { date, shifts }
         return Object.entries(groups)
-            .sort(([a], [b]) => b.localeCompare(a)) // newest first
+            .sort(([a], [b]) => b.localeCompare(a))
             .map(([date, shifts]) => ({ date, shifts }));
+    }
+
+    // Show skeleton during initial load
+    if (isInitialLoad && dutyHistoryLoading) {
+        return (
+            <>
+                <StatusBar style="dark" translucent={false} backgroundColor={colors.white} />
+                <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+                    <View style={styles.header}>
+                        <TouchableOpacity
+                            style={styles.backBtn}
+                            onPress={() => navigation?.goBack()}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="chevron-back" size={nz(24)} color={colors.black} />
+                        </TouchableOpacity>
+                        <Text style={styles.headerTitle}>Shift History</Text>
+                        <View style={styles.refreshBtn}>
+                            <Ionicons name="refresh-outline" size={nz(22)} color={colors.primary} />
+                        </View>
+                    </View>
+                    <ShiftHistorySkeleton />
+                </SafeAreaView>
+            </>
+        );
     }
 
     return (
         <>
             <StatusBar style="dark" translucent={false} backgroundColor={colors.white} />
             <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-
-                {/* ── Header ── */}
                 <View style={styles.header}>
                     <TouchableOpacity
                         style={styles.backBtn}
@@ -431,15 +698,13 @@ export default function ShiftHistoryScreen({ navigation }) {
                     showsVerticalScrollIndicator={false}
                     refreshControl={
                         <RefreshControl
-                            refreshing={dutyHistoryLoading}
+                            refreshing={dutyHistoryLoading && !isInitialLoad}
                             onRefresh={load}
                             colors={[colors.primary]}
                             tintColor={colors.primary}
                         />
                     }
                 >
-
-                    {/* ── Month Picker ── */}
                     <MonthPicker
                         year={year}
                         month={month}
@@ -447,13 +712,7 @@ export default function ShiftHistoryScreen({ navigation }) {
                         onNext={goToNext}
                     />
 
-                    {/* ── Summary Cards ── */}
-                    {dutyHistoryLoading && !dutyHistory ? (
-                        <View style={styles.loadingWrap}>
-                            <ActivityIndicator size="large" color={colors.primary} />
-                            <Text style={styles.loadingText}>Loading shifts...</Text>
-                        </View>
-                    ) : dutyHistoryError ? (
+                    {dutyHistoryError ? (
                         <View style={styles.errorWrap}>
                             <Ionicons name="cloud-offline-outline" size={nz(44)} color={colors.border} />
                             <Text style={styles.errorTitle}>Couldn't load data</Text>
@@ -464,7 +723,6 @@ export default function ShiftHistoryScreen({ navigation }) {
                         </View>
                     ) : (
                         <>
-                            {/* Summary row */}
                             <View style={styles.summaryRow}>
                                 <SummaryCard
                                     icon="time-outline"
@@ -496,7 +754,6 @@ export default function ShiftHistoryScreen({ navigation }) {
                                 />
                             </View>
 
-                            {/* ── Tab Toggle ── */}
                             <View style={styles.tabToggle}>
                                 <TouchableOpacity
                                     style={[styles.tabToggleBtn, activeTab === 'calendar' && styles.tabToggleBtnActive]}
@@ -534,17 +791,14 @@ export default function ShiftHistoryScreen({ navigation }) {
                                 </TouchableOpacity>
                             </View>
 
-                            {/* ── Calendar View ── */}
                             {activeTab === 'calendar' && (
                                 <View style={styles.calendarCard}>
-                                    {/* Day headers */}
                                     <View style={styles.calendarDayHeaders}>
                                         {DAYS_SHORT.map(d => (
                                             <Text key={d} style={styles.calendarDayHeader}>{d}</Text>
                                         ))}
                                     </View>
 
-                                    {/* Day cells */}
                                     <View style={styles.calendarGrid}>
                                         {calendarDays.map((cell, idx) => (
                                             <DayCell
@@ -559,7 +813,6 @@ export default function ShiftHistoryScreen({ navigation }) {
                                         ))}
                                     </View>
 
-                                    {/* Legend */}
                                     <View style={styles.legend}>
                                         <View style={styles.legendItem}>
                                             <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
@@ -614,8 +867,6 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.white,
     },
-
-    // Header
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -648,16 +899,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-
-    // Scroll
     scroll: { flex: 1, backgroundColor: '#F5F6FA' },
     scrollContent: {
         paddingHorizontal: nz(16),
         paddingTop: nzVertical(16),
         gap: nzVertical(14),
     },
-
-    // Month picker
     monthPicker: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -685,8 +932,6 @@ const styles = StyleSheet.create({
         color: colors.black,
         fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'System',
     },
-
-    // Summary
     summaryRow: {
         flexDirection: 'row',
         gap: nz(10),
@@ -723,8 +968,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
     },
-
-    // Tab toggle
     tabToggle: {
         flexDirection: 'row',
         backgroundColor: colors.primary + '12',
@@ -755,8 +998,6 @@ const styles = StyleSheet.create({
     tabToggleTextActive: {
         color: colors.white,
     },
-
-    // Calendar
     calendarCard: {
         backgroundColor: colors.white,
         borderRadius: nz(20),
@@ -830,8 +1071,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#E53935',
         marginTop: nzVertical(2),
     },
-    // Add inside StyleSheet.create({})
-
     dayGroupHeader: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -914,7 +1153,6 @@ const styles = StyleSheet.create({
         marginVertical: nzVertical(12),
         borderStyle: 'dashed',
     },
-    // Legend
     legend: {
         flexDirection: 'row',
         justifyContent: 'center',
@@ -935,8 +1173,6 @@ const styles = StyleSheet.create({
         fontSize: rs(11),
         color: colors.textLight,
     },
-
-    // Shift list
     listSection: { gap: nzVertical(4) },
     listSectionTitle: {
         fontSize: rs(13),
@@ -966,10 +1202,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.4,
         shadowRadius: 4,
         elevation: 3,
-    },
-    timelineDotActive: {
-        backgroundColor: '#4CD964',
-        shadowColor: '#4CD964',
     },
     timelineLine: {
         flex: 1,
@@ -1067,8 +1299,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: colors.primary,
     },
-
-    // Loading / Error / Empty
     loadingWrap: {
         alignItems: 'center',
         paddingVertical: nzVertical(60),

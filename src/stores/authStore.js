@@ -1,5 +1,6 @@
 // src/stores/authStore.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 import * as Location from 'expo-location';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -39,10 +40,10 @@ const useAuthStore = create(
               ...response.data.data,
             };
             set({ user: userData, isAuthenticated: true, isLoading: false, error: null, tempEmail: null });
-            
+
             // ✅ Fetch complete profile after successful login
             await get().fetchProfile();
-            
+
             return { success: true };
           } else {
             throw new Error(response.data?.message || 'Login failed');
@@ -77,7 +78,7 @@ const useAuthStore = create(
               const loc = await Location.getCurrentPositionAsync({});
               coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
             }
-          } catch (e) {}
+          } catch (e) { }
 
           if (!coords) { set({ error: 'Location required', isLoading: false }); return false; }
 
@@ -110,10 +111,10 @@ const useAuthStore = create(
               isLoading: false,
               tempEmail: null,
             });
-            
+
             // ✅ Fetch complete profile after successful OTP verification
             await get().fetchProfile();
-            
+
             return true;
           } else {
             throw new Error(response.data?.message);
@@ -164,9 +165,9 @@ const useAuthStore = create(
         set({ isLoading: true, error: null });
         try {
           const payload = {};
-          if (fullName !== undefined)    payload.fullName    = fullName;
+          if (fullName !== undefined) payload.fullName = fullName;
           if (dateOfBirth !== undefined) payload.dateOfBirth = dateOfBirth;
-          if (phone !== undefined)       payload.phone       = phone;
+          if (phone !== undefined) payload.phone = phone;
 
           const response = await api.post('/waiter/updateProfile', payload);
 
@@ -185,17 +186,38 @@ const useAuthStore = create(
         }
       },
 
-      // ─── Logout ───────────────────────────────────────────────────────────
-      logout: async () => {
+      logout: async (force = false) => {
         try {
           const { user } = get();
-          if (user?.token) {
-            await api.post('/waiter/logout', {}, { headers: { Authorization: `Bearer ${user.token}` } });
+          const token = user?.accessToken || user?.token;
+          if (token) {
+            await axios.post(
+              'https://sandbox.safeqr.in/api/v1/waiter/logout',
+              {},
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                timeout: 8000,
+              }
+            );
           }
-        } catch (error) {
+        } catch (e) {
+          const message = e?.response?.data?.message;
+          const status = e?.response?.data?.statusCode;
+
+          // Server blocking logout due to active orders — surface to user
+          if (status === 400 && message && !force) {
+            return { blocked: true, message };
+          }
+          // Any other error or force=true → wipe locally anyway
         } finally {
-          set({ user: null, isAuthenticated: false, error: null, tempEmail: null });
+          // Only clear state if not blocked (or if forced)
+          const isBlocked = /* handled below */ false;
         }
+
+        set({ user: null, isAuthenticated: false, error: null, tempEmail: null });
       },
 
       // ─── Duty Toggle ──────────────────────────────────────────────────────
@@ -209,11 +231,11 @@ const useAuthStore = create(
               const loc = await Location.getCurrentPositionAsync({});
               coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
             }
-          } catch (e) {}
+          } catch (e) { }
 
           const payload = {
             isOnDuty,
-            latitude:  coords?.latitude  ?? 0,
+            latitude: coords?.latitude ?? 0,
             longitude: coords?.longitude ?? 0,
           };
 
@@ -233,8 +255,8 @@ const useAuthStore = create(
       },
 
       // ─── Helpers ─────────────────────────────────────────────────────────
-      clearError:    () => set({ error: null }),
-      getToken:      () => get().user?.token || null,
+      clearError: () => set({ error: null }),
+      getToken: () => get().user?.token || null,
 
       // Local-only profile patch (kept for non-API use-cases)
       updateProfile: (data) => set((state) => ({ user: { ...state.user, ...data } })),

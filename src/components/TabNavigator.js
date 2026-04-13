@@ -1,11 +1,7 @@
 // navigation/BottomTabNavigator.js
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/HomeScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
@@ -16,72 +12,64 @@ import { useHaptics } from '../utils/Haptic';
 import { nz, nzVertical, rs } from '../utils/responsive';
 
 const Tab = createBottomTabNavigator();
-const ORANGE = '#F07B2B';
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
 const TAB_CONFIG = {
   Home: {
-    component: HomeScreen,
     label: 'Home',
+    activeColor: colors.primary,
     icon: (focused) => (
-      <Feather name="home" size={rs(focused ? 22 : 20)}
-        color={focused ? colors.primary : colors.textLighter} />
+      <Feather
+        name="home"
+        size={rs(22)}
+        color={focused ? colors.primary : colors.textLighter}
+      />
     ),
   },
   POS: {
-    component: POSScreen,
     label: 'POS',
-    // Orange icon to stand out as a key action tab
+    activeColor: colors.primary,
     icon: (focused) => (
       <MaterialCommunityIcons
         name="point-of-sale"
-        size={rs(focused ? 24 : 22)}
-        color={focused ? ORANGE : colors.textLighter}
+        size={rs(22)}
+        color={focused ? colors.primary : colors.textLighter}
       />
     ),
-    isAction: true, // renders with special orange active style
   },
   History: {
-    component: OrderHistoryScreen,
     label: 'History',
+    activeColor: colors.primary,
     icon: (focused) => (
-      <Ionicons name="time-outline" size={rs(focused ? 22 : 20)}
-        color={focused ? colors.primary : colors.textLighter} />
+      <Ionicons
+        name="time-outline"
+        size={rs(22)}
+        color={focused ? colors.primary : colors.textLighter}
+      />
     ),
   },
   Setting: {
-    component: ProfileScreen,
     label: 'Setting',
+    activeColor: colors.primary,
     icon: (focused) => (
-      <Ionicons name="settings-outline" size={rs(focused ? 22 : 20)}
-        color={focused ? colors.primary : colors.textLighter} />
+      <Ionicons
+        name="settings-outline"
+        size={rs(22)}
+        color={focused ? colors.primary : colors.textLighter}
+      />
     ),
   },
 };
 
 // ─── Single Tab Button ────────────────────────────────────────────────────────
 function TabBarButton({ onPress, onLongPress, isFocused, routeName }) {
-  const { tabClick } = useHaptics();
   const config = TAB_CONFIG[routeName];
-  const isAction = config?.isAction;
+  const activeColor = config?.activeColor ?? colors.primary;
+  const { tabClick } = useHaptics();
 
-  // Float up on active
-  const floatStyle = useAnimatedStyle(() => ({
-    transform: [{
-      translateY: withSpring(isFocused ? -6 : 0, { damping: 15, stiffness: 300 }),
-    }],
-  }));
-
-  // Scale icon
-  const scaleStyle = useAnimatedStyle(() => ({
-    transform: [{
-      scale: withSpring(isFocused ? 1.08 : 1, { damping: 12, stiffness: 200 }),
-    }],
-  }));
-
-  const handlePress = async () => {
-    await tabClick();
+  const handlePress = () => {
     onPress();
+    tabClick?.();
   };
 
   return (
@@ -90,77 +78,62 @@ function TabBarButton({ onPress, onLongPress, isFocused, routeName }) {
       onLongPress={onLongPress}
       activeOpacity={0.7}
       style={styles.tabButton}
-      android_ripple={{
-        color: (isAction ? ORANGE : colors.primary) + '20',
-        borderless: true,
-        radius: nz(30),
-        foreground: true,
-      }}
     >
-      <Animated.View style={[styles.iconContainer, floatStyle]}>
-        <Animated.View style={scaleStyle}>
-          {config?.icon(isFocused)}
-        </Animated.View>
-        {/* Active dot */}
-        {isFocused && (
-          <View style={[
-            styles.activeDot,
-            isAction && { backgroundColor: ORANGE },
-          ]} />
-        )}
-      </Animated.View>
+      {/* Active indicator bar at top */}
+      <View style={[styles.activeBar, isFocused && { backgroundColor: activeColor }]} />
 
-      {isFocused && (
-        <Animated.Text style={[
-          styles.tabLabel,
-          isAction && { color: ORANGE },
-        ]}>
-          {config?.label}
-        </Animated.Text>
-      )}
+      {/* Icon */}
+      {config?.icon(isFocused)}
+
+      {/* Label */}
+      <Text style={[
+        styles.tabLabel,
+        { color: isFocused ? activeColor : colors.textLighter },
+        isFocused && styles.tabLabelActive,
+      ]}>
+        {config?.label}
+      </Text>
     </TouchableOpacity>
   );
 }
 
-// ─── Custom Floating Tab Bar ──────────────────────────────────────────────────
-function CustomTabBar({ state, descriptors, navigation }) {
+// ─── Custom Tab Bar ───────────────────────────────────────────────────────────
+function CustomTabBar({ state, navigation }) {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[
-      styles.tabBarContainer,
-      { paddingBottom: insets.bottom > 0 ? insets.bottom + nzVertical(8) : nzVertical(12) },
+      styles.tabBar,
+      { paddingBottom: insets.bottom > 0 ? insets.bottom : nzVertical(8) },
     ]}>
-      <View style={styles.tabBarInner}>
-        {state.routes.map((route, index) => {
-          const isFocused = state.index === index;
+      {state.routes.map((route, index) => {
+        const isFocused = state.index === index;
 
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
+        const onPress = () => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        };
 
-          const onLongPress = () => {
-            navigation.emit({ type: 'tabLongPress', target: route.key });
-          };
+        const onLongPress = () => {
+          navigation.emit({ type: 'tabLongPress', target: route.key });
+        };
 
-          return (
-            <TabBarButton
-              key={route.key}
-              onPress={onPress}
-              onLongPress={onLongPress}
-              isFocused={isFocused}
-              routeName={route.name}
-            />
-          );
-        })}
-      </View>
+        return (
+          <TabBarButton
+            key={route.key}
+            onPress={onPress}
+            onLongPress={onLongPress}
+            isFocused={isFocused}
+            routeName={route.name}
+          />
+        );
+      })}
     </View>
   );
 }
@@ -183,52 +156,35 @@ export default function BottomTabNavigator() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  tabBarContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  tabBarInner: {
+  tabBar: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.98)',
-    marginHorizontal: nz(16),
-    paddingHorizontal: nz(8),
-    paddingVertical: nz(10),
-    borderRadius: nz(50),
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 8,
-    borderWidth: 0.5,
-    borderColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#EFEFEF',
   },
   tabButton: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: nzVertical(4),
-    borderRadius: nz(30),
+    justifyContent: 'flex-start',
+    paddingTop: nzVertical(8),
+    paddingBottom: nzVertical(4),
+    gap: nzVertical(3),
   },
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activeDot: {
+  activeBar: {
     position: 'absolute',
-    bottom: -nz(5),
-    width: nz(4),
-    height: nz(4),
+    top: 0,
+    left: nz(16),
+    right: nz(16),
+    height: nz(2.5),
     borderRadius: nz(2),
-    backgroundColor: colors.primary,
+    backgroundColor: 'transparent',
   },
   tabLabel: {
     fontSize: rs(10),
-    color: colors.primary,
-    fontWeight: '600',
-    marginTop: nzVertical(3),
+    fontWeight: '500',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  tabLabelActive: {
+    fontWeight: '700',
   },
 });

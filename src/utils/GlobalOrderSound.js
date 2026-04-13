@@ -1,34 +1,29 @@
 // components/GlobalOrderSound.jsx
-// Mount this ONCE at your App root (inside providers, outside any navigator).
-// It watches the UIStore and plays/stops the loop sound automatically.
-
 import { useEffect, useRef } from 'react';
 import useUIStore from '../stores/uiStore';
 import { startOrderSound, stopOrderSound, unloadOrderSound } from '../utils/soundManager';
 
 export default function GlobalOrderSound() {
-  const pendingOrders  = useUIStore(s => s.pendingOrders);
-  const acceptedOrders = useUIStore(s => s.acceptedOrders);
-  const hasOrders = pendingOrders.length > 0 || acceptedOrders.length > 0;
-  const prevHasOrders = useRef(false);
+  // ✅ Only watch pendingOrders — ongoing orders don't trigger sound
+  const pendingOrders = useUIStore(s => s.pendingOrders);
+  const hasPending    = pendingOrders.length > 0;
+  const prevHasPending = useRef(false);
 
   useEffect(() => {
-    if (hasOrders && !prevHasOrders.current) {
-      // Orders just appeared — start sound
+    if (hasPending && !prevHasPending.current) {
+      // Pending orders just appeared — start loop
       startOrderSound();
-    } else if (!hasOrders && prevHasOrders.current) {
-      // All orders gone — stop sound
+    } else if (!hasPending && prevHasPending.current) {
+      // Pending orders cleared — stop loop
       stopOrderSound();
     }
-    prevHasOrders.current = hasOrders;
-  }, [hasOrders]);
+    prevHasPending.current = hasPending;
+  }, [hasPending]);
 
-  // Cleanup on unmount (e.g. logout)
+  // Cleanup on unmount (logout)
   useEffect(() => {
-    return () => {
-      unloadOrderSound();
-    };
+    return () => { unloadOrderSound(); };
   }, []);
 
-  return null; // No UI
+  return null;
 }

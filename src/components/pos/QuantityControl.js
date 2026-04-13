@@ -45,23 +45,29 @@ const styles = StyleSheet.create({
   qtyContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: nz(12),
-    width: '100%',
+    justifyContent: 'space-between',
+    borderWidth: 1.5,
+    borderColor: PRIMARY,
+    borderRadius: nz(8),
+    paddingHorizontal: nz(6),
+    height: nz(32), // 👈 same as ADD button height
+    minWidth: nz(90), // 👈 compact width
   },
+
   qtyBtn: {
-    backgroundColor: PRIMARY_LIGHT,
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   qtyBtnDisabled: {
-    backgroundColor: BORDER_COLOR,
+    opacity: 0.4,
   },
+
   qtyText: {
-    fontSize: rs(14),
-    fontWeight: '600',
+    fontSize: rs(13),
+    fontWeight: '700',
     color: TEXT_PRIMARY,
-    minWidth: nz(24),
+    minWidth: nz(20),
     textAlign: 'center',
   },
 });

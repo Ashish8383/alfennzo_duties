@@ -1,6 +1,7 @@
 // screens/ProfileScreen.js
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -10,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Linking as RNLinking,
   ScrollView,
   StyleSheet,
   Text,
@@ -25,11 +27,15 @@ import { checkLocationPermission, checkNotificationPermission } from '../utils/P
 import { nz, nzVertical, rs } from '../utils/responsive';
 
 const HEADER_BG = '#FFFFFF';
+const TERMS_URL = 'https://www.alfennzo.com/qr/terms-condition';
+const PRIVACY_URL = 'https://www.alfennzo.com/qr/privacy-policy';
+const SUPPORT_PHONE = '+919319702754';
+const SUPPORT_EMAIL = 'support@alfennzo.com';
 
 const MENU_ITEMS = [
   { key: 'permissions', label: 'Permissions', icon: 'key-outline' },
   { key: 'shifts', label: 'Shift History', icon: 'time-outline' },
-  { key: 'privacy', label: 'Privacy', icon: 'shield-checkmark-outline' },
+  { key: 'privacy', label: 'Privacy Policy', icon: 'shield-checkmark-outline' },
   { key: 'support', label: 'Contact Support', icon: 'chatbubble-ellipses-outline' },
   { key: 'terms', label: 'Terms & Conditions', icon: 'document-text-outline' },
 ];
@@ -73,6 +79,20 @@ const maskDOB = (text) => {
     masked += digits[i];
   }
   return masked;
+};
+
+/** Open URL in browser */
+const openURL = async (url) => {
+  try {
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      Alert.alert('Error', 'Cannot open this link');
+    }
+  } catch (error) {
+    Alert.alert('Error', 'Something went wrong');
+  }
 };
 
 // ─── Edit Profile Popup Modal ─────────────────────────────────────────────────
@@ -285,6 +305,121 @@ function EditProfilePopup({ visible, user, onClose, onSave, isSaving }) {
   );
 }
 
+// ─── Contact Support Modal ────────────────────────────────────────────────────
+function ContactSupportModal({ visible, onClose }) {
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          bounciness: 8,
+          speed: 14,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      scaleAnim.setValue(0.9);
+      fadeAnim.setValue(0);
+    }
+  }, [visible]);
+
+  const handleCall = () => {
+    const phoneUrl = `tel:${SUPPORT_PHONE}`;
+    RNLinking.openURL(phoneUrl).catch(() => {
+      Alert.alert('Error', 'Unable to make call');
+    });
+  };
+
+  const handleEmail = () => {
+    const emailUrl = `mailto:${SUPPORT_EMAIL}`;
+    RNLinking.openURL(emailUrl).catch(() => {
+      Alert.alert('Error', 'Unable to open email');
+    });
+  };
+
+  const handleWhatsApp = () => {
+    const whatsappUrl = `whatsapp://send?phone=${SUPPORT_PHONE.replace('+', '')}`;
+    RNLinking.openURL(whatsappUrl).catch(() => {
+      Alert.alert('WhatsApp not installed', 'Would you like to call instead?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Call', onPress: handleCall },
+      ]);
+    });
+  };
+
+  if (!visible) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={contactStyles.overlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
+        
+        <Animated.View style={[contactStyles.modal, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+          <View style={contactStyles.header}>
+            <Text style={contactStyles.title}>Contact Support</Text>
+            <TouchableOpacity onPress={onClose} style={contactStyles.closeBtn}>
+              <Ionicons name="close" size={nz(22)} color={colors.textLight} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={contactStyles.divider} />
+
+          <View style={contactStyles.content}>
+            <Text style={contactStyles.subtitle}>How would you like to reach us?</Text>
+
+            <TouchableOpacity style={contactStyles.option} onPress={handleCall} activeOpacity={0.7}>
+              <View style={[contactStyles.optionIcon, { backgroundColor: '#4CD964' }]}>
+                <Ionicons name="call" size={nz(22)} color={colors.white} />
+              </View>
+              <View style={contactStyles.optionContent}>
+                <Text style={contactStyles.optionTitle}>Call Us</Text>
+                <Text style={contactStyles.optionSubtitle}>{SUPPORT_PHONE}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={nz(18)} color={colors.textLighter} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={contactStyles.option} onPress={handleWhatsApp} activeOpacity={0.7}>
+              <View style={[contactStyles.optionIcon, { backgroundColor: '#25D366' }]}>
+                <Ionicons name="logo-whatsapp" size={nz(22)} color={colors.white} />
+              </View>
+              <View style={contactStyles.optionContent}>
+                <Text style={contactStyles.optionTitle}>WhatsApp</Text>
+                <Text style={contactStyles.optionSubtitle}>Chat with us on WhatsApp</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={nz(18)} color={colors.textLighter} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={contactStyles.option} onPress={handleEmail} activeOpacity={0.7}>
+              <View style={[contactStyles.optionIcon, { backgroundColor: '#EA4335' }]}>
+                <Ionicons name="mail" size={nz(22)} color={colors.white} />
+              </View>
+              <View style={contactStyles.optionContent}>
+                <Text style={contactStyles.optionTitle}>Email</Text>
+                <Text style={contactStyles.optionSubtitle}>{SUPPORT_EMAIL}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={nz(18)} color={colors.textLighter} />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Menu Item ────────────────────────────────────────────────────────────────
 function MenuItem({ item, onPress, isLast }) {
   return (
@@ -311,6 +446,7 @@ export default function ProfileScreen() {
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [contactModalVisible, setContactModalVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState({ location: false, notification: false });
 
@@ -351,40 +487,46 @@ export default function ProfileScreen() {
       Alert.alert('Update Failed', result?.error || 'Please try again.');
     }
   };
-const handleLogout = () => {
-  Alert.alert('Logout', 'Are you sure you want to logout?', [
-    { text: 'Cancel', style: 'cancel' },
-    {
-      text: 'Logout',
-      style: 'destructive',
-      onPress: async () => {
-        const result = await logout();
 
-        if (result?.blocked) {
-          Alert.alert(
-            'Cannot Logout',
-            result.message,
-            [
-              {
-                text: 'OK',
-                style: 'destructive',
-              },
-            ]
-          );
-        }
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          const result = await logout();
+          if (result?.blocked) {
+            Alert.alert(
+              'Cannot Logout',
+              result.message,
+              [{ text: 'OK', style: 'destructive' }]
+            );
+          }
+        },
       },
-    },
-  ]);
-};
+    ]);
+  };
 
   const handleMenuItemPress = (itemKey) => {
     switch (itemKey) {
-      case 'shifts': navigation.navigate('ShiftHistory'); break;
-      case 'permissions': navigation.navigate('PermissionStatus'); break;
-      case 'privacy': Alert.alert('Privacy', 'Coming soon!'); break;
-      case 'support': Alert.alert('Contact Support', 'support@example.com'); break;
-      case 'terms': Alert.alert('Terms & Conditions', 'Coming soon!'); break;
-      default: break;
+      case 'shifts':
+        navigation.navigate('ShiftHistory');
+        break;
+      case 'permissions':
+        navigation.navigate('PermissionStatus');
+        break;
+      case 'privacy':
+        openURL(PRIVACY_URL);
+        break;
+      case 'support':
+        setContactModalVisible(true);
+        break;
+      case 'terms':
+        openURL(TERMS_URL);
+        break;
+      default:
+        break;
     }
   };
 
@@ -483,9 +625,98 @@ const handleLogout = () => {
         onSave={handleSaveProfile}
         isSaving={isSaving}
       />
+
+      <ContactSupportModal
+        visible={contactModalVisible}
+        onClose={() => setContactModalVisible(false)}
+      />
     </>
   );
 }
+
+// ─── Contact Support Modal Styles ─────────────────────────────────────────────
+const contactStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: nz(20),
+  },
+  modal: {
+    backgroundColor: colors.white,
+    borderRadius: nz(20),
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: nz(20),
+    paddingTop: nzVertical(20),
+    paddingBottom: nzVertical(12),
+  },
+  title: {
+    fontSize: rs(18),
+    fontWeight: '700',
+    color: colors.black,
+  },
+  closeBtn: {
+    padding: nz(4),
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginBottom: nzVertical(16),
+    marginHorizontal: nz(20),
+  },
+  content: {
+    paddingHorizontal: nz(20),
+    paddingBottom: nzVertical(20),
+  },
+  subtitle: {
+    fontSize: rs(14),
+    color: colors.textLight,
+    marginBottom: nzVertical(20),
+    textAlign: 'center',
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: nzVertical(12),
+    paddingHorizontal: nz(12),
+    backgroundColor: '#F8F9FA',
+    borderRadius: nz(12),
+    marginBottom: nzVertical(10),
+  },
+  optionIcon: {
+    width: nz(44),
+    height: nz(44),
+    borderRadius: nz(22),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: nz(12),
+  },
+  optionContent: {
+    flex: 1,
+  },
+  optionTitle: {
+    fontSize: rs(15),
+    fontWeight: '600',
+    color: colors.black,
+    marginBottom: nzVertical(2),
+  },
+  optionSubtitle: {
+    fontSize: rs(12),
+    color: colors.textLight,
+  },
+});
 
 // ─── Popup Modal Styles ───────────────────────────────────────────────────────
 const popupStyles = StyleSheet.create({

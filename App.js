@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 import GlobalPermissionModal from './src/components/GlobalPermission';
+import GlobalLocationTracker from './src/components/LocationTracker';
 import AppNavigator from './src/navigation/AppNavigator';
 import GlobalOrderSound from './src/utils/GlobalOrderSound';
 import InAppNotification from './src/utils/InAppNotification';
@@ -20,10 +21,10 @@ import { toastConfig } from './src/utils/toastConfig';
 
 export default function App() {
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [initialCheckDone, setInitialCheckDone]       = useState(false);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
-  const isCheckingRef     = useRef(false);
-  const permissionsOkRef  = useRef(false); // ✅ once granted, never re-prompt
+  const isCheckingRef = useRef(false);
+  const permissionsOkRef = useRef(false); // ✅ once granted, never re-prompt
 
   // ── One-time setup ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -82,19 +83,21 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <GlobalOrderSound />
-      <NavigationContainer ref={navigationRef}>
-        <AppNavigator />
-        <Toast config={toastConfig} />
-      </NavigationContainer>
+      <GlobalLocationTracker>
+        <NavigationContainer ref={navigationRef}>
+          <AppNavigator />
+          <Toast config={toastConfig} />
+        </NavigationContainer>
 
-      <GlobalPermissionModal
-        visible={showPermissionModal}
-        onClose={() => setShowPermissionModal(false)}
-        onPermissionsGranted={() => {
-          permissionsOkRef.current = true;  
-          setShowPermissionModal(false);
-        }}
-      />
+        <GlobalPermissionModal
+          visible={showPermissionModal}
+          onClose={() => setShowPermissionModal(false)}
+          onPermissionsGranted={() => {
+            permissionsOkRef.current = true;
+            setShowPermissionModal(false);
+          }}
+        />
+      </GlobalLocationTracker>
       <InAppNotification />
     </SafeAreaProvider>
   );

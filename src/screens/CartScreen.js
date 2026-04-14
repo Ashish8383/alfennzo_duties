@@ -1062,17 +1062,6 @@ export default function CartScreen({ route }) {
                 ))}
               </View>
             </Section>
-
-            <Section icon="chatbubble-ellipses-outline" title="Special Instructions" badge="Optional">
-              <InputField
-                icon="create-outline"
-                placeholder="Any special requests…"
-                value={note}
-                onChange={setNote}
-                multiline
-              />
-            </Section>
-
           </ScrollView>
 
           <View style={[scr.footer, { paddingBottom: footerPadding }]}>

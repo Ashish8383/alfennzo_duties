@@ -1,189 +1,152 @@
+// stores/orderHistoryStore.js
 import { create } from 'zustand';
+import api from '../utils/api';
 
-const useOrderStore = create((set, get) => ({
-  // State
-  orders: {
-    new: [
-      { 
-        id: '1', 
-        tableNo: '12', 
-        items: 'Margherita Pizza, Pasta Alfredo', 
-        time: '5 min ago', 
-        customer: 'John Doe', 
-        quantity: 2, 
-        total: '$45.50',
-        status: 'new'
-      },
-      { 
-        id: '2', 
-        tableNo: '5', 
-        items: 'Chicken Burger, French Fries', 
-        time: '10 min ago', 
-        customer: 'Jane Smith', 
-        quantity: 2, 
-        total: '$28.00',
-        status: 'new'
-      },
-      { 
-        id: '3', 
-        tableNo: '8', 
-        items: 'Vegetable Spring Rolls', 
-        time: '15 min ago', 
-        customer: 'Mike Johnson', 
-        quantity: 1, 
-        total: '$12.50',
-        status: 'new'
-      },
-    ],
-    preparing: [
-      { 
-        id: '4', 
-        tableNo: '3', 
-        items: 'Caesar Salad, Tomato Soup', 
-        time: '20 min ago', 
-        customer: 'Sarah Wilson', 
-        quantity: 2, 
-        total: '$22.00',
-        status: 'preparing'
-      },
-    ],
-    ready: [
-      { 
-        id: '5', 
-        tableNo: '10', 
-        items: 'Grilled Steak', 
-        time: '30 min ago', 
-        customer: 'Tom Brown', 
-        quantity: 1, 
-        total: '$35.00',
-        status: 'ready'
-      },
-    ],
-    delivered: [
-      { 
-        id: '6', 
-        tableNo: '7', 
-        items: 'Sushi Platter', 
-        time: '1 hour ago', 
-        customer: 'Emily Davis', 
-        quantity: 1, 
-        total: '$42.00',
-        status: 'delivered'
-      },
-    ],
-  },
-  
-  orderHistory: [
-    { id: '101', table: '12', items: 'Pizza, Pasta', total: '$45.50', date: '2024-01-15', status: 'completed' },
-    { id: '102', table: '5', items: 'Burger, Fries', total: '$28.00', date: '2024-01-15', status: 'completed' },
-    { id: '103', table: '8', items: 'Sushi Roll', total: '$32.50', date: '2024-01-14', status: 'cancelled' },
-    { id: '104', table: '3', items: 'Salad, Soup', total: '$22.00', date: '2024-01-14', status: 'completed' },
-    { id: '105', table: '10', items: 'Steak', total: '$35.00', date: '2024-01-13', status: 'completed' },
-    { id: '106', table: '7', items: 'Sushi', total: '$42.00', date: '2024-01-13', status: 'cancelled' },
-  ],
-  
-  isLoading: false,
-  activeTab: 'new',
-  
-  // Actions
-  setActiveTab: (tab) => set({ activeTab: tab }),
-  
-  acceptOrder: (orderId) => {
-    set((state) => {
-      const orderToMove = state.orders.new.find(order => order.id === orderId);
-      if (!orderToMove) return state;
-      
-      return {
-        orders: {
-          ...state.orders,
-          new: state.orders.new.filter(order => order.id !== orderId),
-          preparing: [...state.orders.preparing, { ...orderToMove, time: 'Just now', status: 'preparing' }],
-        }
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Convert our { day, month, year } object → ISO date string
+function toISODate({ day, month, year }) {
+  const mm = String(month + 1).padStart(2, '0');
+  const dd = String(day).padStart(2, '0');
+  return `${year}-${mm}-${dd}`;
+}
+
+// ─── Store ────────────────────────────────────────────────────────────────────
+const useOrderHistoryStore = create((set, get) => ({
+  // ── Completed tab ──────────────────────────────────────────────────────────
+  completedOrders: [],
+  completedPage: 1,
+  completedTotalPages: 1,
+  completedLoading: false,
+  completedLoadingMore: false,
+
+  // ── Cancelled tab ──────────────────────────────────────────────────────────
+  cancelledOrders: [],
+  cancelledPage: 1,
+  cancelledTotalPages: 1,
+  cancelledLoading: false,
+  cancelledLoadingMore: false,
+
+  // ── Shared ─────────────────────────────────────────────────────────────────
+  analytics: null,
+  dateRange: null, // { from: { day, month, year }, to: { day, month, year } }
+  error: null,
+
+  // ── Fetch order history for a specific status ──────────────────────────────
+  fetchOrderHistory: async (status, page = 1, dateRange = null, replace = true) => {
+    const isCompleted = status === 'DELIVERED';
+    const loadingKey = isCompleted ? 'completedLoading' : 'cancelledLoading';
+    const moreKey = isCompleted ? 'completedLoadingMore' : 'cancelledLoadingMore';
+    const ordersKey = isCompleted ? 'completedOrders' : 'cancelledOrders';
+    const pageKey = isCompleted ? 'completedPage' : 'cancelledPage';
+    const totalKey = isCompleted ? 'completedTotalPages' : 'cancelledTotalPages';
+
+    if (replace) set({ [loadingKey]: true, error: null });
+    else set({ [moreKey]: true });
+
+    try {
+      // Build query params
+      const params = {
+        page,
+        limit: 20,
       };
+
+      if (status) params.waiterStatus = status;
+      if (dateRange?.from) params.startDate = toISODate(dateRange.from);
+      if (dateRange?.to) params.endDate = toISODate(dateRange.to);
+
+      // Make API call using the configured api instance
+      const response = await api.get('/waiter/ordersHistory', { params });
+
+      if (response.data?.status === true) {
+        const { analytics, pagination, orders } = response.data.data;
+
+        set(state => ({
+          [ordersKey]: replace ? orders : [...state[ordersKey], ...orders],
+          [pageKey]: pagination.page,
+          [totalKey]: pagination.totalPages,
+          // Only update analytics from completed tab (primary source)
+          ...(isCompleted ? { analytics } : {}),
+          [loadingKey]: false,
+          [moreKey]: false,
+          error: null,
+        }));
+
+        return { success: true, data: response.data.data };
+      }
+
+      throw new Error(response.data?.message || 'Failed to fetch order history');
+    } catch (error) {
+      const msg = error?.response?.data?.message || error.message || 'Could not load order history';
+      set({
+        error: msg,
+        [loadingKey]: false,
+        [moreKey]: false
+      });
+      return { error: msg };
+    }
+  },
+
+  // ── Fetch both completed and cancelled orders ──────────────────────────────
+  fetchAllOrders: async (dateRange = null) => {
+    // Update dateRange in state first
+    if (dateRange) set({ dateRange });
+    else if (dateRange === null && get().dateRange !== null) set({ dateRange: null });
+
+    const currentRange = dateRange !== undefined ? dateRange : get().dateRange;
+    
+    await Promise.all([
+      get().fetchOrderHistory('DELIVERED', 1, currentRange, true),
+      get().fetchOrderHistory('CANCELLED', 1, currentRange, true),
+    ]);
+  },
+
+  // ── Load more completed orders (pagination) ────────────────────────────────
+  loadMoreCompleted: async () => {
+    const { completedPage, completedTotalPages, completedLoadingMore, dateRange, fetchOrderHistory } = get();
+    if (completedLoadingMore || completedPage >= completedTotalPages) return;
+    await fetchOrderHistory('DELIVERED', completedPage + 1, dateRange, false);
+  },
+
+  // ── Load more cancelled orders (pagination) ────────────────────────────────
+  loadMoreCancelled: async () => {
+    const { cancelledPage, cancelledTotalPages, cancelledLoadingMore, dateRange, fetchOrderHistory } = get();
+    if (cancelledLoadingMore || cancelledPage >= cancelledTotalPages) return;
+    await fetchOrderHistory('CANCELLED', cancelledPage + 1, dateRange, false);
+  },
+
+  // ── Apply date range filter ────────────────────────────────────────────────
+  applyDateRange: async (range) => {
+    set({ dateRange: range, completedPage: 1, cancelledPage: 1 });
+    await get().fetchAllOrders(range);
+  },
+
+  // ── Clear date range filter ────────────────────────────────────────────────
+  clearDateRange: async () => {
+    set({ dateRange: null, completedPage: 1, cancelledPage: 1 });
+    await get().fetchAllOrders(null);
+  },
+
+  // ── Reset entire store ─────────────────────────────────────────────────────
+  resetOrderHistory: () => {
+    set({
+      completedOrders: [],
+      completedPage: 1,
+      completedTotalPages: 1,
+      completedLoading: false,
+      completedLoadingMore: false,
+      cancelledOrders: [],
+      cancelledPage: 1,
+      cancelledTotalPages: 1,
+      cancelledLoading: false,
+      cancelledLoadingMore: false,
+      analytics: null,
+      dateRange: null,
+      error: null,
     });
   },
-  
-  updateOrderStatus: (orderId, currentStatus) => {
-    set((state) => {
-      if (currentStatus === 'preparing') {
-        const orderToMove = state.orders.preparing.find(order => order.id === orderId);
-        if (!orderToMove) return state;
-        
-        return {
-          orders: {
-            ...state.orders,
-            preparing: state.orders.preparing.filter(order => order.id !== orderId),
-            ready: [...state.orders.ready, { ...orderToMove, time: 'Just now', status: 'ready' }],
-          }
-        };
-      } else if (currentStatus === 'ready') {
-        const orderToMove = state.orders.ready.find(order => order.id === orderId);
-        if (!orderToMove) return state;
-        
-        return {
-          orders: {
-            ...state.orders,
-            ready: state.orders.ready.filter(order => order.id !== orderId),
-            delivered: [...state.orders.delivered, { ...orderToMove, time: 'Just now', status: 'delivered' }],
-          }
-        };
-      }
-      
-      return state;
-    });
-  },
-  
-  addOrder: (newOrder) => {
-    const orderWithId = {
-      ...newOrder,
-      id: Date.now().toString(),
-      time: 'Just now',
-      status: 'new'
-    };
-    set((state) => ({
-      orders: {
-        ...state.orders,
-        new: [orderWithId, ...state.orders.new],
-      }
-    }));
-  },
-  
-  cancelOrder: (orderId, status) => {
-    set((state) => ({
-      orders: {
-        ...state.orders,
-        [status]: state.orders[status].filter(order => order.id !== orderId),
-      }
-    }));
-  },
-  
-  getOrderStats: () => {
-    const state = get();
-    return {
-      total: Object.values(state.orders).flat().length,
-      new: state.orders.new.length,
-      preparing: state.orders.preparing.length,
-      ready: state.orders.ready.length,
-      delivered: state.orders.delivered.length,
-    };
-  },
-  
-  getFilteredHistory: (searchDate, filter) => {
-    const state = get();
-    let filtered = [...state.orderHistory];
-    
-    if (searchDate) {
-      filtered = filtered.filter(order => order.date.includes(searchDate));
-    }
-    
-    if (filter === 'completed') {
-      filtered = filtered.filter(order => order.status === 'completed');
-    } else if (filter === 'cancelled') {
-      filtered = filtered.filter(order => order.status === 'cancelled');
-    }
-    
-    return filtered;
-  },
+
+  // ── Clear error ────────────────────────────────────────────────────────────
+  clearError: () => set({ error: null }),
 }));
 
-export default useOrderStore;
+export default useOrderHistoryStore;

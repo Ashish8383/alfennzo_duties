@@ -1,12 +1,10 @@
 import { createStackNavigator } from '@react-navigation/stack';
 import BottomTabNavigator from '../components/TabNavigator';
 import CartScreen from '../screens/CartScreen';
-import CreatePasswordScreen from '../screens/CreatePasswordScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import LoginScreen from '../screens/LoginScreen';
 import PermissionStatusScreen from '../screens/PermissionStatusScreen';
 import ShiftHistoryScreen from '../screens/ShiftHistoryScreen';
-import VerifyOTPScreen from '../screens/VerifyOTPScreen';
 import useAuthStore from '../stores/authStore';
 import colors from '../utils/colors';
 
@@ -26,8 +24,6 @@ export default function AppNavigator() {
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-          <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
-          <Stack.Screen name="CreatePassword" component={CreatePasswordScreen} />
         </>
       ) : (
         <>

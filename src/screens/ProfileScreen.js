@@ -402,17 +402,6 @@ function ContactSupportModal({ visible, onClose }) {
               </View>
               <Ionicons name="chevron-forward" size={nz(18)} color={colors.textLighter} />
             </TouchableOpacity>
-
-            <TouchableOpacity style={contactStyles.option} onPress={handleEmail} activeOpacity={0.7}>
-              <View style={[contactStyles.optionIcon, { backgroundColor: '#EA4335' }]}>
-                <Ionicons name="mail" size={nz(22)} color={colors.white} />
-              </View>
-              <View style={contactStyles.optionContent}>
-                <Text style={contactStyles.optionTitle}>Email</Text>
-                <Text style={contactStyles.optionSubtitle}>{SUPPORT_EMAIL}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={nz(18)} color={colors.textLighter} />
-            </TouchableOpacity>
           </View>
         </Animated.View>
       </View>

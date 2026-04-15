@@ -114,7 +114,7 @@ export default function LoginScreen({ navigation }) {
   };
 
   const handleForgotPassword = () => {
-    toast.showError('Coming Soon', 'Forgot password feature will be available soon');
+    navigation.navigate('ForgotPassword');
   };
 
   // --- NEW: Function to open URLs ---
@@ -225,14 +225,14 @@ export default function LoginScreen({ navigation }) {
             <View style={styles.termsContainer}>
               <Text style={styles.termsText}>
                 By continuing, I accept the{' '}
-                <Text 
-                  style={styles.termsLink} 
+                <Text
+                  style={styles.termsLink}
                   onPress={() => openLink('https://www.alfennzo.com/terms-and-conditions')}>
                   Terms & Conditions
                 </Text>
                 {' '}and{' '}
-                <Text 
-                  style={styles.termsLink} 
+                <Text
+                  style={styles.termsLink}
                   onPress={() => openLink('https://www.alfennzo.com/privacy-policy')}>
                   Privacy Policy
                 </Text>

@@ -11,11 +11,45 @@ export function navigate(name, params) {
 }
 
 export function navigateToHomePendingTab() {
-  navigate('Home', { initialTab: 0 });
+  if (navigationRef.current?.isReady()) {
+    navigationRef.current.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'Main',
+          state: {
+            routes: [
+              {
+                name: 'Home',
+                params: { initialTab: 0 },
+              },
+            ],
+          },
+        },
+      ],
+    });
+  }
 }
 
 export function navigateToHomeOngoingTab() {
-  navigate('Home', { initialTab: 1 });
+  if (navigationRef.current?.isReady()) {
+    navigationRef.current.reset({
+      index: 1,
+      routes: [
+        {
+          name: 'Main',
+          state: {
+            routes: [
+              {
+                name: 'Home',
+                params: { initialTab: 1 },
+              },
+            ],
+          },
+        },
+      ],
+    });
+  }
 }
 
 export function navigateToLogin() {

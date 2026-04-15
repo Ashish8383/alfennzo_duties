@@ -783,6 +783,7 @@ export default function HomeScreen({ navigation, route }) {
           break;
         }
         case 'ORDER_DELIVERED_CONFIRMED':
+          console.log('Order delivered event received:', d);
           fetchAcceptedOrders();
           showToast.current?.('Order delivered!', 'success');
           break;

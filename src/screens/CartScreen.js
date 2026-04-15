@@ -24,6 +24,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import VegDot from '../components/pos/VegDot';
 import useUIStore from '../stores/uiStore';
 import colors from '../utils/colors';
+import { navigateToHomeOngoingTab } from '../utils/navigationRef';
 import { nz, nzVertical, rs } from '../utils/responsive';
 
 const { height: SH, width: SW } = Dimensions.get('window');
@@ -893,9 +894,9 @@ export default function CartScreen({ route }) {
   };
 
   const handleDone = () => {
-    if (typeof onCartChange === 'function') onCartChange({});
-    navigation.goBack();
-  };
+  if (typeof onCartChange === 'function') onCartChange({});
+  navigateToHomeOngoingTab();
+};
 
   const canPlace =
     cartItems.length > 0 &&
@@ -904,8 +905,8 @@ export default function CartScreen({ route }) {
     !orderCreating;
 
   const PAY_METHODS = [
-    { id: 'cash', label: 'Cash', icon: 'cash-outline' },
-    { id: 'card', label: 'Card', icon: 'card-outline' },
+    { id: 'credit_card', label: 'Credit Card', icon: 'card-outline' },
+    { id: 'debit_card', label: 'Debit Card', icon: 'card-outline' },
     { id: 'upi', label: 'UPI', icon: 'qr-code-outline' },
   ];
 

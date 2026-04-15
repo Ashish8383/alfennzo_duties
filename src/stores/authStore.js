@@ -261,15 +261,37 @@ const useAuthStore = create(
       // Local-only profile patch (kept for non-API use-cases)
       updateProfile: (data) => set((state) => ({ user: { ...state.user, ...data } })),
 
-      resetPassword: async (email, otp, newPassword) => {
-        set({ isLoading: true });
+      // ─── ADD THESE TWO METHODS inside useAuthStore, alongside the existing methods ─
+
+      // ─── Forgot Password — send OTP ───────────────────────────────────────────────
+      forgotPassword: async (email) => {
         try {
-          const response = await api.post('/waiter/resetPassword', { email, otp, newPassword });
-          set({ isLoading: false });
-          return response.data?.success !== false;
+          const response = await api.post('/waiter/forgetPassword', { email });
+          if (response.data?.status === true) {
+            return { success: true, message: response.data?.message };
+          }
+          return { error: response.data?.message || 'Could not send OTP' };
         } catch (error) {
-          set({ isLoading: false });
-          return false;
+          const msg = error?.response?.data?.message || 'Network error. Please try again.';
+          return { error: msg };
+        }
+      },
+
+      // ─── Forgot Password — verify OTP + set new password ─────────────────────────
+      verifyForgotOTP: async (email, otp, newPassword) => {
+        try {
+          const response = await api.post('/waiter/verifyForgetPasswordOTP', {
+            email,
+            otp,
+            newPassword,
+          });
+          if (response.data?.status === true) {
+            return { success: true, message: response.data?.message };
+          }
+          return { error: response.data?.message || 'Verification failed' };
+        } catch (error) {
+          const msg = error?.response?.data?.message || 'Invalid OTP or request expired';
+          return { error: msg };
         }
       },
     }),

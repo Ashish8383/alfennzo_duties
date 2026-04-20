@@ -173,14 +173,14 @@ const styles = StyleSheet.create({
   activeBar: {
     position: 'absolute',
     top: 0,
-    left: nz(16),
-    right: nz(16),
-    height: nz(2.5),
+    left: nz(18),
+    right: nz(18),
+    height: nz(3),
     borderRadius: nz(2),
     backgroundColor: 'transparent',
   },
   tabLabel: {
-    fontSize: rs(10),
+    fontSize: rs(14),
     fontWeight: '500',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },

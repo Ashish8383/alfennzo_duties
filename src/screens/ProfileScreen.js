@@ -34,6 +34,7 @@ const SUPPORT_EMAIL = 'support@alfennzo.com';
 
 const MENU_ITEMS = [
   { key: 'permissions', label: 'Permissions', icon: 'key-outline' },
+  { key: 'earnings', label: 'Earnings', icon: 'cash-outline' },
   { key: 'shifts', label: 'Shift History', icon: 'time-outline' },
   { key: 'privacy', label: 'Privacy Policy', icon: 'shield-checkmark-outline' },
   { key: 'support', label: 'Contact Support', icon: 'chatbubble-ellipses-outline' },
@@ -367,7 +368,7 @@ function ContactSupportModal({ visible, onClose }) {
     >
       <View style={contactStyles.overlay}>
         <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
-        
+
         <Animated.View style={[contactStyles.modal, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
           <View style={contactStyles.header}>
             <Text style={contactStyles.title}>Contact Support</Text>
@@ -504,6 +505,9 @@ export default function ProfileScreen() {
         break;
       case 'permissions':
         navigation.navigate('PermissionStatus');
+        break;
+      case 'earnings':
+        navigation.navigate('Earnings');
         break;
       case 'privacy':
         openURL(PRIVACY_URL);

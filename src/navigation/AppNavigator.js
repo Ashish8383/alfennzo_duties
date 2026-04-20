@@ -1,6 +1,7 @@
 import { createStackNavigator } from '@react-navigation/stack';
 import BottomTabNavigator from '../components/TabNavigator';
 import CartScreen from '../screens/CartScreen';
+import EarningsScreen from '../screens/EarningsScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import LoginScreen from '../screens/LoginScreen';
 import PermissionStatusScreen from '../screens/PermissionStatusScreen';
@@ -30,15 +31,19 @@ export default function AppNavigator() {
           {/* ✅ Main tabs */}
           <Stack.Screen name="Main" component={BottomTabNavigator} />
           <Stack.Screen name="PermissionStatus" component={PermissionStatusScreen} />
-          {/* ✅ Screens that push OVER the tab bar */}
           <Stack.Screen name="ShiftHistory" component={ShiftHistoryScreen} />
+          <Stack.Screen
+            name="Earnings"
+            component={EarningsScreen}
+            options={{ headerShown: false }}
+          />
           <Stack.Screen
             name="Cart"
             component={CartScreen}
             options={{
-              headerShown: false,           // CartScreen has its own header
-              presentation: 'card',         // standard push animation
-              gestureEnabled: true,         // swipe-back gesture
+              headerShown: false,
+              presentation: 'card',
+              gestureEnabled: true,
             }}
           />
         </>

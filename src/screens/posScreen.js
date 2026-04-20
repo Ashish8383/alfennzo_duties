@@ -190,10 +190,12 @@ export default function POSScreen() {
 
   const scrollViewRef = useRef();
 
-  const { posMenu, posMenuLoading, posMenuError, fetchPOSMenu, restaurantInfo } = useUIStore();
+  const { posMenu, posMenuError, fetchPOSMenu, restaurantInfo } = useUIStore();
   const { user, changeDutytoggal } = useAuthStore();
 
   const isOnDuty = user?.isOnDuty === true;
+
+  console.log(user,"uyser")
 
   useEffect(() => { loadMenu(); }, []);
 

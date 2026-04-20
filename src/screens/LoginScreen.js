@@ -73,7 +73,7 @@ export default function LoginScreen({ navigation }) {
     }
 
     const result = await login(email, password);
-
+    console.log('Login result:', result);
     if (result?.requiresOTP) {
       // OTP modal will show automatically via useEffect
       toast.showSuccess('OTP Sent', result.message || 'Verification code sent to your email');
@@ -198,14 +198,6 @@ export default function LoginScreen({ navigation }) {
                 <Text style={styles.forgotText}>Forgot password?</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Error Message */}
-            {error && !isLoading && !showOTPModal && (
-              <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={16} color={colors.error} />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
 
             {/* Login Button */}
             <TouchableOpacity

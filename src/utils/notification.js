@@ -45,7 +45,7 @@ export const setupNotificationChannel = async () => {
   try {
     const channelConfig = {
       importance:          Notifications.AndroidImportance.MAX,
-      sound:               'notification', // matches res/raw/notification.mp3
+      sound:               'notification', 
       enableVibrate:       true,
       enableLights:        true,
       bypassDnd:           true,

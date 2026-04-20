@@ -1,5 +1,3 @@
-// utils/navigationRef.js
-// Mount this at your root App.js: <NavigationContainer ref={navigationRef}>
 import { createRef } from 'react';
 
 export const navigationRef = createRef();
@@ -53,7 +51,10 @@ export function navigateToHomeOngoingTab() {
 }
 
 export function navigateToLogin() {
-  if (navigationRef.isReady()) {
-    navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
+  if (navigationRef.current?.isReady()) {
+    navigationRef.current.reset({
+      index: 0,
+      routes: [{ name: 'Login' }],
+    });
   }
 }

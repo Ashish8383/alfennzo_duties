@@ -2,7 +2,6 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 
-// Firebase configuration with direct values
 const firebaseConfig = {
   apiKey: "AIzaSyDY9RyKyjOxzQ7fU1mMn22riMeIyL_KlDc",
   authDomain: "partner-console-sandbox.firebaseapp.com",

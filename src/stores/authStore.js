@@ -7,62 +7,91 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import api from '../utils/api';
 import { getDeviceInfo } from '../utils/deviceinfo';
 
+const API_BASE_URL = 'https://sandbox.safeqr.in/api/v1';
+
+// ─── Token helper ──────────────────────────────────────────────────────────────
+/**
+ * Pull all token-related fields out of a login / OTP-verify response data object.
+ * Handles both `response.data` and `response.data.data` shapes.
+ */
+const extractTokenFields = (data = {}, fallbackEmail = '') => ({
+  // IDs / identity
+  id:       data.id   || data._id  || data.userId,
+  name:     data.fullName || data.name || fallbackEmail.split('@')[0],
+  fullName: data.fullName || data.name || fallbackEmail.split('@')[0],
+  email:    data.email || fallbackEmail,
+  phone:    data.phone ? String(data.phone) : '',
+  role:     data.role || 'waiter',
+
+  // Tokens
+  accessToken:  data.accessToken  || data.token,
+  token:        data.accessToken  || data.token,   // keep alias
+  refreshToken: data.refreshToken || null,
+
+  // ✅ Expiry timestamps — used by api.js for proactive refresh
+  accessTokenExpiresAt:  data.accessTokenExpiresAt  || null,
+  refreshTokenExpiresAt: data.refreshTokenExpiresAt || null,
+
+  // Extra flags
+  wasLoggedOutFromAnotherDevice: data.wasLoggedOutFromAnotherDevice ?? false,
+
+  // Spread everything else (restaurant info, duty status, etc.)
+  ...data,
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 const useAuthStore = create(
   persist(
     (set, get) => ({
-      // State
+      // ─── State ───────────────────────────────────────────────────────────
       user: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
       tempEmail: null,
 
-      // ─── Login ────────────────────────────────────────────────────────────
+      // ─── Login ───────────────────────────────────────────────────────────
       login: async (email, password) => {
+        console.log('[authStore] login attempt for:', email);
         set({ isLoading: true, error: null });
         try {
           const response = await api.post('/waiter/waiterLogin', { email, password });
-
-          if (response.data?.status === true && response.data.message?.includes('OTP')) {
+          const body = response.data;
+           console.log('[authStore] login response:', body);
+          // OTP flow
+          if (body?.status === true && body.message?.includes('OTP')) {
             set({ tempEmail: email, isLoading: false, error: null });
-            return { requiresOTP: true, email, message: response.data.message };
+            return { requiresOTP: true, email, message: body.message };
           }
 
-          if (response.data?.token) {
-            const userData = {
-              id: response.data.data?.id || response.data.userId || response.data._id,
-              name: response.data.data?.name || response.data.userName || email.split('@')[0],
-              fullName: response.data.data?.fullName || response.data.data?.name || email.split('@')[0],
-              email: response.data.data?.email || email,
-              phone: response.data.data?.phone || response.data.mobile || '',
-              role: response.data.data?.role || 'waiter',
-              token: response.data.token || response.data.accessToken,
-              ...response.data.data,
-            };
+          // Direct token flow
+          if (body?.data?.accessToken || body?.token) {
+            const userData = extractTokenFields(body.data || {}, email);
             set({ user: userData, isAuthenticated: true, isLoading: false, error: null, tempEmail: null });
 
-            // ✅ Fetch complete profile after successful login
+            // Refresh full profile so all fields are present
             await get().fetchProfile();
-
             return { success: true };
-          } else {
-            throw new Error(response.data?.message || 'Login failed');
           }
+
+          throw new Error(body?.message || 'Login failed');
+
         } catch (error) {
-          let errorMessage = 'Invalid credentials';
+          let msg = 'Invalid credentials';
           if (error.response) {
-            errorMessage = error.response.data?.message || error.response.data?.error || `Login failed (${error.response.status})`;
+            msg = error.response.data?.message || error.response.data?.error || `Login failed (${error.response.status})`;
           } else if (error.request) {
-            errorMessage = 'Network error. Please check your connection.';
+            msg = 'Network error. Please check your connection.';
           } else {
-            errorMessage = error.message || 'Login failed';
+            msg = error.message || 'Login failed';
           }
-          set({ error: errorMessage, isLoading: false, user: null, isAuthenticated: false });
-          return { error: errorMessage };
+          set({ error: msg, isLoading: false, user: null, isAuthenticated: false });
+          return { error: msg };
         }
       },
 
-      // ─── Verify OTP ───────────────────────────────────────────────────────
+      // ─── Verify OTP (Login) ───────────────────────────────────────────────
       verifyOTP: async (otp) => {
         set({ isLoading: true, error: null });
         try {
@@ -78,50 +107,88 @@ const useAuthStore = create(
               const loc = await Location.getCurrentPositionAsync({});
               coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
             }
-          } catch (e) { }
+          } catch (_) {}
 
           if (!coords) { set({ error: 'Location required', isLoading: false }); return false; }
 
           const payload = {
             email: tempEmail,
             otp,
-            deviceId: deviceData.deviceFingerprint,
+            deviceId:   deviceData.deviceFingerprint,
             deviceInfo: {
-              platform: deviceData.deviceInfo?.platform || 'android',
-              osVersion: deviceData.deviceInfo?.osVersion || '',
-              appVersion: deviceData.deviceInfo?.appVersion || '1.0.0',
+              platform:    deviceData.deviceInfo?.platform    || 'android',
+              osVersion:   deviceData.deviceInfo?.osVersion   || '',
+              appVersion:  deviceData.deviceInfo?.appVersion  || '1.0.0',
               deviceModel: deviceData.deviceInfo?.deviceModel || '',
             },
-            fcmToken: deviceData.fcmToken,
-            latitude: coords.latitude,
+            fcmToken:  deviceData.fcmToken,
+            latitude:  coords.latitude,
             longitude: coords.longitude,
           };
 
           const response = await api.post('/waiter/verifyWaiterLoginOTP', payload);
+          const body = response.data;
 
-          if (response.data?.status === true) {
-            // Set initial user data from OTP response
-            set({
-              user: {
-                ...response.data.data,
-                token: response.data.data?.accessToken || response.data.accessToken,
-                refreshToken: response.data.data?.refreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              tempEmail: null,
-            });
+          if (body?.status === true) {
+            // ✅ Extract tokens + expiry from OTP response
+            const userData = extractTokenFields(body.data || {}, tempEmail);
+            set({ user: userData, isAuthenticated: true, isLoading: false, tempEmail: null });
 
-            // ✅ Fetch complete profile after successful OTP verification
             await get().fetchProfile();
-
             return true;
-          } else {
-            throw new Error(response.data?.message);
           }
+
+          throw new Error(body?.message);
         } catch (error) {
-          set({ error: error?.response?.data?.message || 'OTP failed', isLoading: false });
+          set({ error: error?.response?.data?.message || 'OTP verification failed', isLoading: false });
           return false;
+        }
+      },
+
+      // ─── Refresh Access Token ─────────────────────────────────────────────
+      // Called directly by api.js interceptor — also exposed for manual use.
+      refreshAccessToken: async () => {
+        const { user } = get();
+        const refreshToken = user?.refreshToken;
+
+        if (!refreshToken) return { error: 'No refresh token available' };
+
+        if (user?.refreshTokenExpiresAt) {
+          const expiresAt = new Date(user.refreshTokenExpiresAt).getTime();
+          if (expiresAt <= Date.now()) {
+            await get().logout(true);
+            return { error: 'Session expired. Please log in again.' };
+          }
+        }
+
+        try {
+          const response = await axios.post(
+            `${API_BASE_URL}/waiter/refreshToken`,
+            { refreshToken },
+            { headers: { 'Content-Type': 'application/json' }, timeout: 10000 }
+          );
+
+          const body = response.data;
+          if (!body?.status) throw new Error(body?.message || 'Refresh rejected');
+
+          const d = body.data || body;
+          const tokenFields = {
+            accessToken:           d.accessToken          || d.token,
+            token:                 d.accessToken          || d.token,
+            refreshToken:          d.refreshToken         || refreshToken,
+            accessTokenExpiresAt:  d.accessTokenExpiresAt || null,
+            refreshTokenExpiresAt: d.refreshTokenExpiresAt || user?.refreshTokenExpiresAt,
+          };
+
+          // Merge updated tokens into store (preserves all other user fields)
+          set((state) => ({ user: { ...state.user, ...tokenFields } }));
+          return { success: true, accessToken: tokenFields.accessToken };
+
+        } catch (error) {
+          console.warn('[authStore] refreshAccessToken failed:', error?.message);
+          // Refresh failed — session is dead
+          await get().logout(true);
+          return { error: 'Session expired. Please log in again.' };
         }
       },
 
@@ -130,55 +197,50 @@ const useAuthStore = create(
         try {
           const response = await api.get('/waiter/getProfile');
           if (response.data?.status === true && response.data?.data) {
-            const profileData = response.data.data;
-            // Merge profile data into existing user (preserve token/auth fields)
+            const p = response.data.data;
             set((state) => ({
               user: {
                 ...state.user,
-                // Map API fields to local fields
-                fullName: profileData.fullName || state.user?.fullName,
-                name: profileData.fullName || state.user?.name,        // keep "name" alias in sync
-                phone: profileData.phone ? String(profileData.phone) : state.user?.phone,
-                email: profileData.email || state.user?.email,
-                dateOfBirth: profileData.dateOfBirth || state.user?.dateOfBirth,
-                isOnDuty: profileData.isOnDuty ?? state.user?.isOnDuty,
-                isProfileCompleted: profileData.isProfileCompleted,
-                isKycCompleted: profileData.isKycCompleted,
-                salary: profileData.Salary,
-                restaurantId: profileData.restaurantId,
-                restaurantCoordinate: profileData.restaurantCoordinate,
-                // Raw profile snapshot for reference
-                _profile: profileData,
+                fullName:           p.fullName            || state.user?.fullName,
+                name:               p.fullName            || state.user?.name,
+                phone:              p.phone ? String(p.phone) : state.user?.phone,
+                email:              p.email               || state.user?.email,
+                dateOfBirth:        p.dateOfBirth         || state.user?.dateOfBirth,
+                isOnDuty:           p.isOnDuty            ?? state.user?.isOnDuty,
+                isProfileCompleted: p.isProfileCompleted,
+                isKycCompleted:     p.isKycCompleted,
+                salary:             p.Salary,
+                restaurantId:       p.restaurantId,
+                restaurantCoordinate: p.restaurantCoordinate,
+                _profile:           p,
               },
             }));
             return { success: true };
           }
           return { error: response.data?.message || 'Failed to fetch profile' };
         } catch (error) {
-          console.log('fetchProfile error:', error?.response?.data);
+          console.warn('[authStore] fetchProfile error:', error?.response?.data);
           return { error: error?.response?.data?.message || 'Could not load profile' };
         }
       },
 
-      // ─── Update Profile (API-bound) ───────────────────────────────────────
+      // ─── Update Profile ───────────────────────────────────────────────────
       updateUserProfile: async ({ fullName, dateOfBirth, phone }) => {
         set({ isLoading: true, error: null });
         try {
           const payload = {};
-          if (fullName !== undefined) payload.fullName = fullName;
+          if (fullName    !== undefined) payload.fullName    = fullName;
           if (dateOfBirth !== undefined) payload.dateOfBirth = dateOfBirth;
-          if (phone !== undefined) payload.phone = phone;
+          if (phone       !== undefined) payload.phone       = phone;
 
           const response = await api.post('/waiter/updateProfile', payload);
 
           if (response.data?.status === true) {
-            // Refresh profile from server so UI is consistent
             await get().fetchProfile();
             set({ isLoading: false });
             return { success: true, message: response.data?.message || 'Profile updated' };
-          } else {
-            throw new Error(response.data?.message || 'Update failed');
           }
+          throw new Error(response.data?.message || 'Update failed');
         } catch (error) {
           const msg = error?.response?.data?.message || 'Could not update profile';
           set({ isLoading: false, error: msg });
@@ -186,35 +248,29 @@ const useAuthStore = create(
         }
       },
 
+      // ─── Logout ───────────────────────────────────────────────────────────
       logout: async (force = false) => {
         try {
           const { user } = get();
           const token = user?.accessToken || user?.token;
           if (token) {
             await axios.post(
-              'https://sandbox.safeqr.in/api/v1/waiter/logout',
+              `${API_BASE_URL}/waiter/logout`,
               {},
               {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                 timeout: 8000,
               }
             );
           }
         } catch (e) {
           const message = e?.response?.data?.message;
-          const status = e?.response?.data?.statusCode;
+          const status  = e?.response?.data?.statusCode;
 
-          // Server blocking logout due to active orders — surface to user
           if (status === 400 && message && !force) {
             return { blocked: true, message };
           }
-          // Any other error or force=true → wipe locally anyway
-        } finally {
-          // Only clear state if not blocked (or if forced)
-          const isBlocked = /* handled below */ false;
+          // Any other error or force=true → wipe locally
         }
 
         set({ user: null, isAuthenticated: false, error: null, tempEmail: null });
@@ -231,11 +287,11 @@ const useAuthStore = create(
               const loc = await Location.getCurrentPositionAsync({});
               coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
             }
-          } catch (e) { }
+          } catch (_) {}
 
           const payload = {
             isOnDuty,
-            latitude: coords?.latitude ?? 0,
+            latitude:  coords?.latitude  ?? 0,
             longitude: coords?.longitude ?? 0,
           };
 
@@ -244,9 +300,8 @@ const useAuthStore = create(
           if (response.data?.status === true) {
             set((state) => ({ user: { ...state.user, isOnDuty }, isLoading: false }));
             return { success: true };
-          } else {
-            throw new Error(response.data?.message || 'Failed to change duty status');
           }
+          throw new Error(response.data?.message || 'Failed to change duty status');
         } catch (error) {
           const msg = error?.response?.data?.message || 'Could not update duty status';
           set({ error: msg, isLoading: false });
@@ -254,16 +309,7 @@ const useAuthStore = create(
         }
       },
 
-      // ─── Helpers ─────────────────────────────────────────────────────────
-      clearError: () => set({ error: null }),
-      getToken: () => get().user?.token || null,
-
-      // Local-only profile patch (kept for non-API use-cases)
-      updateProfile: (data) => set((state) => ({ user: { ...state.user, ...data } })),
-
-      // ─── ADD THESE TWO METHODS inside useAuthStore, alongside the existing methods ─
-
-      // ─── Forgot Password — send OTP ───────────────────────────────────────────────
+      // ─── Forgot Password — send OTP ───────────────────────────────────────
       forgotPassword: async (email) => {
         try {
           const response = await api.post('/waiter/forgetPassword', { email });
@@ -272,32 +318,34 @@ const useAuthStore = create(
           }
           return { error: response.data?.message || 'Could not send OTP' };
         } catch (error) {
-          const msg = error?.response?.data?.message || 'Network error. Please try again.';
-          return { error: msg };
+          return { error: error?.response?.data?.message || 'Network error. Please try again.' };
         }
       },
 
-      // ─── Forgot Password — verify OTP + set new password ─────────────────────────
+      // ─── Forgot Password — verify OTP + new password ──────────────────────
       verifyForgotOTP: async (email, otp, newPassword) => {
         try {
           const response = await api.post('/waiter/verifyForgetPasswordOTP', {
-            email,
-            otp,
-            newPassword,
+            email, otp, newPassword,
           });
           if (response.data?.status === true) {
             return { success: true, message: response.data?.message };
           }
           return { error: response.data?.message || 'Verification failed' };
         } catch (error) {
-          const msg = error?.response?.data?.message || 'Invalid OTP or request expired';
-          return { error: msg };
+          return { error: error?.response?.data?.message || 'Invalid OTP or request expired' };
         }
       },
+
+      // ─── Helpers ──────────────────────────────────────────────────────────
+      clearError:    () => set({ error: null }),
+      getToken:      () => get().user?.accessToken || get().user?.token || null,
+      updateProfile: (data) => set((state) => ({ user: { ...state.user, ...data } })),
     }),
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      // ✅ Persist expiry timestamps so api.js can read them on cold start
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,

@@ -20,10 +20,7 @@ export default function CartItem({ item, quantity, onIncrease, onDecrease, onRem
 
   if (!item) return null;
 
-  // ── Resolve display values ──────────────────────────────────────────────────
-  // Cart items always have `name` set by addToCart, but guard all paths
   const itemName = item.name || item.itemName || item.combofoodName || 'Item';
-
   const displayPrice =
     item.isDiscountedByRestraurant && item.discountinPercentageByRestraurant > 0
       ? item.price * (1 - item.discountinPercentageByRestraurant / 100)
@@ -32,7 +29,6 @@ export default function CartItem({ item, quantity, onIncrease, onDecrease, onRem
   const isCombo =
     item.itemType === 'combo' || Boolean(item.comboData) || Boolean(item.comboItemCount);
 
-  // comboData is the full API combo object stored by addToCart
   const comboData = item.comboData || {};
   const comboItemsList = comboData.ComboItems || [];
   const comboItemCount = item.comboItemCount ?? comboItemsList.length;
@@ -41,9 +37,7 @@ export default function CartItem({ item, quantity, onIncrease, onDecrease, onRem
 
   return (
     <>
-      {/* ── Row ── */}
       <View style={styles.cartItem}>
-        {/* Thumbnail */}
         <View style={styles.imageContainer}>
           {!imageError && itemImage ? (
             <Image
@@ -57,9 +51,7 @@ export default function CartItem({ item, quantity, onIncrease, onDecrease, onRem
           )}
         </View>
 
-        {/* Info block */}
         <View style={styles.cartItemInfo}>
-          {/* Name row — NO flexWrap so flex:1 works on the Text */}
           <View style={styles.nameRow}>
             <VegDot isVeg={item.isVeg} />
             <Text style={styles.cartItemName} numberOfLines={2}>
@@ -76,9 +68,8 @@ export default function CartItem({ item, quantity, onIncrease, onDecrease, onRem
             </View>
           )}
 
-          <Text style={styles.cartItemPrice}>₹{Math.round(displayPrice)}</Text>
+          <Text style={styles.cartItemPrice}>₹{displayPrice}</Text>
 
-          {/* Tap to see combo breakdown */}
           {isCombo && comboItemCount > 0 && (
             <TouchableOpacity
               style={styles.comboInfoRow}
@@ -92,7 +83,6 @@ export default function CartItem({ item, quantity, onIncrease, onDecrease, onRem
           )}
         </View>
 
-        {/* Actions */}
         <View style={styles.cartItemActions}>
           <QuantityControl
             quantity={quantity}
@@ -106,7 +96,6 @@ export default function CartItem({ item, quantity, onIncrease, onDecrease, onRem
         </View>
       </View>
 
-      {/* ── Combo Detail Bottom-Sheet ── */}
       <Modal
         visible={showComboDetails}
         transparent
@@ -115,7 +104,6 @@ export default function CartItem({ item, quantity, onIncrease, onDecrease, onRem
         onRequestClose={() => setShowComboDetails(false)}
       >
         <View style={styles.modalOverlay}>
-          {/* Backdrop tap to close */}
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
@@ -123,7 +111,6 @@ export default function CartItem({ item, quantity, onIncrease, onDecrease, onRem
           />
 
           <View style={styles.modalContent}>
-            {/* Header */}
             <View style={styles.modalHeader}>
               <TouchableOpacity
                 onPress={() => setShowComboDetails(false)}
@@ -152,7 +139,6 @@ export default function CartItem({ item, quantity, onIncrease, onDecrease, onRem
               </View>
 
               <View style={styles.detailBody}>
-                {/* Combo name + veg dot */}
                 <View style={styles.comboTitleRow}>
                   <VegDot isVeg={item.isVeg} />
                   <Text style={styles.comboName} numberOfLines={2}>
@@ -160,12 +146,10 @@ export default function CartItem({ item, quantity, onIncrease, onDecrease, onRem
                   </Text>
                 </View>
 
-                {/* Price */}
-                <Text style={styles.comboPrice}>₹{Math.round(displayPrice)}</Text>
+                <Text style={styles.comboPrice}>₹{displayPrice}</Text>
 
                 <View style={styles.divider} />
 
-                {/* Includes list */}
                 <Text style={styles.sectionTitle}>
                   Combo Includes ({comboItemsList.length} items)
                 </Text>
@@ -215,7 +199,6 @@ export default function CartItem({ item, quantity, onIncrease, onDecrease, onRem
 }
 
 const styles = StyleSheet.create({
-  // ── Row ──────────────────────────────────────────────────────────────────────
   cartItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -238,13 +221,11 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  // Info — flex:1 so it fills remaining space
   cartItemInfo: {
     flex: 1,
-    minWidth: 0, // allows text truncation to work
+    minWidth: 0, 
   },
 
-  // Name row — NO flexWrap so the Text's flex:1 works correctly
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -252,14 +233,13 @@ const styles = StyleSheet.create({
     marginBottom: nzVertical(3),
   },
   cartItemName: {
-    flex: 1,          // fills the row; VegDot is fixed-size so this always has room
+    flex: 1,          
     fontSize: rs(14),
     fontWeight: '500',
     color: TEXT_PRIMARY,
     flexShrink: 1,
   },
 
-  // Combo badge on its own line
   comboBadgeWrap: {
     flexDirection: 'row',
     marginBottom: nzVertical(3),
@@ -303,7 +283,6 @@ const styles = StyleSheet.create({
     padding: nz(4),
   },
 
-  // ── Modal ─────────────────────────────────────────────────────────────────────
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

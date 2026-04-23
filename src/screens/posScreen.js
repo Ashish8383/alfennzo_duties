@@ -1,6 +1,5 @@
-// screens/POSScreen.js
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -9,6 +8,8 @@ import {
   Animated,
   Dimensions,
   FlatList,
+  Image,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,11 +18,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import CategoryTabs from '../components/pos/CategoryTabs';
 import ComboItemsModal from '../components/pos/ComboItemsModal';
 import FloatingCart from '../components/pos/FloatingCart';
-import MenuItem from '../components/pos/MenuItem';
-import MenuSectionHeader from '../components/pos/MenuSectionHeader';
 import ProductDetailModal from '../components/pos/ProductDetailModal';
 import useAuthStore from '../stores/authStore';
 import useUIStore from '../stores/uiStore';
@@ -29,157 +27,448 @@ import colors from '../utils/colors';
 import { nz, nzVertical, rs } from '../utils/responsive';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PRIMARY       = colors.primary;
+const PRIMARY = colors.primary;
 const PRIMARY_LIGHT = '#E8F5F2';
-const TEXT_PRIMARY  = '#1A1A1A';
-const TEXT_LIGHT    = '#999999';
-const BORDER_COLOR  = '#F0F0F0';
+const TEXT_PRIMARY = '#1A1A1A';
+const TEXT_SECONDARY = '#555555';
+const TEXT_LIGHT = '#999999';
+const BORDER_COLOR = '#EFEFEF';
+const BG = '#F4F6F8';
 
-// ─── Skeleton Components ──────────────────────────────────────────────────────
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 const SkeletonBox = ({ width, height, borderRadius = nz(6), style }) => {
   const shimmer = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(shimmer, { toValue: 1, duration: 1200, useNativeDriver: true }),
-        Animated.timing(shimmer, { toValue: 0, duration: 1200, useNativeDriver: true }),
+        Animated.timing(shimmer, { toValue: 1, duration: 1000, useNativeDriver: true }),
+        Animated.timing(shimmer, { toValue: 0, duration: 1000, useNativeDriver: true }),
       ])
     );
     loop.start();
     return () => loop.stop();
   }, []);
-
-  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] });
-
+  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.65] });
   return (
-    <Animated.View
-      style={[{ width, height, borderRadius, backgroundColor: '#E0E0E0', opacity }, style]}
-    />
+    <Animated.View style={[{ width, height, borderRadius, backgroundColor: '#D8D8D8', opacity }, style]} />
   );
 };
 
-const SkeletonMenuItem = () => (
-  <View style={styles.skeletonItem}>
-    <SkeletonBox width={nz(70)} height={nz(70)} borderRadius={nz(10)} />
-    <View style={styles.skeletonItemBody}>
-      <SkeletonBox width="70%" height={nzVertical(14)} borderRadius={nz(4)} style={{ marginBottom: nzVertical(8) }} />
-      <SkeletonBox width="45%" height={nzVertical(12)} borderRadius={nz(4)} style={{ marginBottom: nzVertical(6) }} />
-      <SkeletonBox width="35%" height={nzVertical(11)} borderRadius={nz(4)} style={{ marginBottom: nzVertical(10) }} />
-      <View style={styles.skeletonPriceRow}>
-        <SkeletonBox width={nz(60)} height={nzVertical(16)} borderRadius={nz(4)} />
-        <SkeletonBox width={nz(72)} height={nzVertical(32)} borderRadius={nz(8)} />
-      </View>
+const SkeletonRow = () => (
+  <View style={sk.row}>
+    <SkeletonBox width={nz(58)} height={nz(58)} borderRadius={nz(10)} />
+    <View style={{ flex: 1, marginLeft: nz(12), gap: nzVertical(6) }}>
+      <SkeletonBox width="65%" height={nzVertical(14)} />
+      <SkeletonBox width="35%" height={nzVertical(12)} />
+    </View>
+    <SkeletonBox width={nz(70)} height={nzVertical(32)} borderRadius={nz(8)} />
+  </View>
+);
+
+const POSSkeleton = () => (
+  <View style={{ flex: 1, backgroundColor: BG }}>
+    <View style={sk.searchBox}>
+      <SkeletonBox width="100%" height={nzVertical(44)} borderRadius={nz(12)} />
+    </View>
+    <View style={sk.alphaBox}>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <SkeletonBox key={i} width={nz(30)} height={nz(30)} borderRadius={nz(8)} />
+      ))}
+    </View>
+    <View style={{ paddingHorizontal: nz(14), paddingTop: nzVertical(8) }}>
+      {Array.from({ length: 7 }).map((_, i) => (
+        <View key={i}>
+          <SkeletonRow />
+          {i < 6 && <View style={sk.divider} />}
+        </View>
+      ))}
     </View>
   </View>
 );
 
-const SkeletonSection = ({ itemCount = 4 }) => (
-  <View style={styles.skeletonSection}>
-    <View style={styles.skeletonSectionHeader}>
-      <SkeletonBox width={nz(120)} height={nzVertical(18)} borderRadius={nz(4)} />
-      <SkeletonBox width={nz(40)} height={nzVertical(14)} borderRadius={nz(10)} />
-    </View>
-    {Array.from({ length: itemCount }).map((_, index) => (
-      <View key={index}>
-        <SkeletonMenuItem />
-        {index < itemCount - 1 && <View style={styles.skeletonDivider} />}
-      </View>
-    ))}
-  </View>
-);
+const sk = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: nzVertical(10) },
+  divider: { height: 1, backgroundColor: BORDER_COLOR },
+  searchBox: { paddingHorizontal: nz(14), paddingVertical: nzVertical(10) },
+  alphaBox: { flexDirection: 'row', gap: nz(6), paddingHorizontal: nz(14), marginBottom: nzVertical(10) },
+});
 
-const POSMenuSkeleton = () => (
-  <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.skeletonScrollContent}>
-    <View style={styles.skeletonTabsContainer}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.skeletonTabsScroll}>
-        {[90, 70, 85, 65, 95, 75].map((width, index) => (
-          <SkeletonBox key={index} width={nz(width)} height={nzVertical(36)} borderRadius={nz(20)} style={{ marginRight: nz(8) }} />
-        ))}
-      </ScrollView>
-    </View>
-    <SkeletonSection itemCount={5} />
-    <View style={{ height: nzVertical(16) }} />
-    <SkeletonSection itemCount={3} />
-    <View style={{ height: nzVertical(16) }} />
-    <SkeletonSection itemCount={4} />
-  </ScrollView>
-);
+// ─── Unified Item Row ──────────────────────────────────────────────────────────
+function ItemRow({ item, quantity, onPress, onAdd, onIncrease, onDecrease }) {
+  const [imgErr, setImgErr] = useState(false);
 
-// ─── Animated Header Search Bar ───────────────────────────────────────────────
-function HeaderSearchBar({ restaurantInfo, dutyLoading, handleToggleDuty, isOnDuty, searchQuery, setSearchQuery }) {
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const searchInputRef = useRef(null);
+  const displayPrice =
+    item.isDiscountedByRestraurant && item.discountinPercentageByRestraurant > 0
+      ? item.price * (1 - item.discountinPercentageByRestraurant / 100)
+      : item.price || item.comboprice || 0;
 
-  const openSearch = useCallback(() => {
-    setIsSearchOpen(true);
-    setTimeout(() => searchInputRef.current?.focus(), 50);
-  }, []);
-
-  const closeSearch = useCallback(() => {
-    setSearchQuery('');
-    setIsSearchOpen(false);
-  }, [setSearchQuery]);
+  const isCombo = item.itemType === 'combo';
+  const imgUri = item.image || item.categoryImage;
 
   return (
-    <View style={styles.header}>
-      {/* Restaurant info — fully gone when search is open */}
-      {!isSearchOpen && (
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {restaurantInfo?.name || 'M Cafe'}
-          </Text>
-          <Text style={styles.headerSubtitle} numberOfLines={1}>
-            {restaurantInfo?.location || 'Point of Sale'}
-          </Text>
-        </View>
-      )}
-
-      {/* Search input — takes full width when open */}
-      {isSearchOpen && (
-        <View style={[styles.headerSearchWrap, { flex: 1 }]}>
-          <Ionicons name="search-outline" size={nz(18)} color={TEXT_LIGHT} style={{ marginRight: nz(6) }} />
-          <TextInput
-            ref={searchInputRef}
-            style={styles.headerSearchInput}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Search dishes, combos…"
-            placeholderTextColor={TEXT_LIGHT}
-            returnKeyType="search"
-            autoCorrect={false}
+    <TouchableOpacity style={row.wrap} activeOpacity={0.75} onPress={() => onPress(item)}>
+      {/* Thumbnail */}
+      <View style={row.imgWrap}>
+        {!imgErr && imgUri ? (
+          <Image
+            source={{ uri: imgUri }}
+            style={row.img}
+            onError={() => setImgErr(true)}
+            resizeMode="cover"
           />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close-circle" size={nz(16)} color={TEXT_LIGHT} />
-            </TouchableOpacity>
+        ) : (
+          <View style={row.imgFallback}>
+            <Ionicons name={isCombo ? 'gift-outline' : 'restaurant-outline'} size={nz(22)} color={TEXT_LIGHT} />
+          </View>
+        )}
+        {/* Veg / Non-veg dot */}
+        <View style={[row.vegDot, { backgroundColor: item.isVeg ? '#4CAF50' : '#F44336' }]} />
+      </View>
+
+      {/* Info */}
+      <View style={row.info}>
+        <View style={row.nameRow}>
+          <Text style={row.name} numberOfLines={1}>{item.name}</Text>
+          {isCombo && (
+            <View style={row.comboBadge}>
+              <Text style={row.comboBadgeText}>COMBO</Text>
+            </View>
           )}
         </View>
-      )}
+        <Text style={row.price}>₹{displayPrice}</Text>
+        {isCombo && item.comboItemCount > 0 && (
+          <Text style={row.comboSub}>{item.comboItemCount} items included</Text>
+        )}
+        {!isCombo && item.categoryName && (
+          <Text style={row.cat} numberOfLines={1}>{item.categoryName}</Text>
+        )}
+      </View>
 
-      {/* Search / Close icon */}
-      <TouchableOpacity
-        style={styles.headerIconBtn}
-        onPress={isSearchOpen ? closeSearch : openSearch}
-        activeOpacity={0.7}
+      {/* Action */}
+      <View style={row.action}>
+        {quantity === 0 ? (
+          <TouchableOpacity
+            style={row.addBtn}
+            onPress={e => { e.stopPropagation(); onAdd(); }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={nz(18)} color={PRIMARY} />
+            <Text style={row.addText}>ADD</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={row.qtyWrap}>
+            <TouchableOpacity
+              style={row.qtyBtn}
+              onPress={e => { e.stopPropagation(); onDecrease(); }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="remove" size={nz(14)} color={PRIMARY} />
+            </TouchableOpacity>
+            <Text style={row.qtyText}>{quantity}</Text>
+            <TouchableOpacity
+              style={row.qtyBtn}
+              onPress={e => { e.stopPropagation(); onIncrease(); }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add" size={nz(14)} color={PRIMARY} />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const row = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: nzVertical(10),
+    paddingHorizontal: nz(14),
+    backgroundColor: colors.surface,
+    gap: nz(10),
+  },
+  imgWrap: {
+    width: nz(58),
+    height: nz(58),
+    borderRadius: nz(10),
+    overflow: 'visible',
+    flexShrink: 0,
+    position: 'relative',
+  },
+  img: {
+    width: nz(58),
+    height: nz(58),
+    borderRadius: nz(10),
+    backgroundColor: '#F0F0F0',
+  },
+  imgFallback: {
+    width: nz(58),
+    height: nz(58),
+    borderRadius: nz(10),
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  vegDot: {
+    position: 'absolute',
+    bottom: nz(-3),
+    right: nz(-3),
+    width: nz(12),
+    height: nz(12),
+    borderRadius: nz(6),
+    borderWidth: 1.5,
+    borderColor: colors.surface,
+  },
+  info: {
+    flex: 1,
+    minWidth: 0,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: nz(6),
+    marginBottom: nzVertical(2),
+  },
+  name: {
+    fontSize: rs(14),
+    fontWeight: '600',
+    color: TEXT_PRIMARY,
+    flex: 1,
+    flexShrink: 1,
+  },
+  comboBadge: {
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: nz(5),
+    paddingVertical: nzVertical(1),
+    borderRadius: nz(4),
+    flexShrink: 0,
+  },
+  comboBadgeText: { fontSize: rs(8), fontWeight: '800', color: '#E65100' },
+  price: { fontSize: rs(15), fontWeight: '700', color: PRIMARY, marginBottom: nzVertical(1) },
+  cat: { fontSize: rs(11), color: TEXT_LIGHT },
+  comboSub: { fontSize: rs(11), color: PRIMARY, opacity: 0.7 },
+  action: {
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: nz(3),
+    borderWidth: 1.5,
+    borderColor: PRIMARY,
+    borderRadius: nz(8),
+    paddingHorizontal: nz(10),
+    paddingVertical: nzVertical(6),
+    backgroundColor: PRIMARY_LIGHT,
+  },
+  addText: { fontSize: rs(12), fontWeight: '700', color: PRIMARY },
+  qtyWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: PRIMARY,
+    borderRadius: nz(8),
+    backgroundColor: PRIMARY_LIGHT,
+    overflow: 'hidden',
+  },
+  qtyBtn: {
+    width: nz(28),
+    height: nz(30),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  qtyText: {
+    fontSize: rs(13),
+    fontWeight: '700',
+    color: TEXT_PRIMARY,
+    minWidth: nz(22),
+    textAlign: 'center',
+  },
+});
+
+// ─── Alphabet Strip ────────────────────────────────────────────────────────────
+const ALPHABET = '#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+function AlphaStrip({ availableLetters, selectedLetter, onSelect }) {
+  const scrollRef = useRef(null);
+  return (
+    <View style={alpha.container}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={alpha.scroll}
+        bounces={false}
       >
-        <Ionicons
-          name={isSearchOpen ? 'close' : 'search-outline'}
-          size={nz(22)}
-          color={PRIMARY}
-        />
-      </TouchableOpacity>
+        {/* ALL reset button */}
+        <TouchableOpacity
+          style={[alpha.allBtn, !selectedLetter && alpha.allBtnActive]}
+          onPress={() => onSelect(null)}
+          activeOpacity={0.7}
+        >
+          <Text style={[alpha.allTxt, !selectedLetter && alpha.allTxtActive]}>ALL</Text>
+        </TouchableOpacity>
+
+        <View style={alpha.separator} />
+
+        {ALPHABET.map(letter => {
+          const available = availableLetters.has(letter);
+          const active = selectedLetter === letter;
+          return (
+            <TouchableOpacity
+              key={letter}
+              style={[alpha.btn, active && alpha.btnActive, !available && alpha.btnDim]}
+              onPress={() => available && onSelect(active ? null : letter)}
+              activeOpacity={available ? 0.7 : 1}
+              disabled={!available}
+            >
+              <Text style={[alpha.txt, active && alpha.txtActive, !available && alpha.txtDim]}>
+                {letter}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 }
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
+const alpha = StyleSheet.create({
+  container: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER_COLOR,
+    paddingVertical: nzVertical(6),
+  },
+  scroll: { paddingHorizontal: nz(10), gap: nz(4), alignItems: 'center' },
+  allBtn: {
+    paddingHorizontal: nz(10),
+    height: nz(28),
+    borderRadius: nz(7),
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F0F0F0',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  allBtnActive: { backgroundColor: PRIMARY_LIGHT, borderColor: PRIMARY },
+  allTxt: { fontSize: rs(10), fontWeight: '800', color: TEXT_SECONDARY, letterSpacing: 0.4 },
+  allTxtActive: { color: PRIMARY },
+  separator: { width: 1, height: nz(18), backgroundColor: BORDER_COLOR, marginHorizontal: nz(2) },
+  btn: {
+    width: nz(28),
+    height: nz(28),
+    borderRadius: nz(7),
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F0F0F0',
+  },
+  btnActive: { backgroundColor: PRIMARY },
+  btnDim: { opacity: 0.3 },
+  txt: { fontSize: rs(11), fontWeight: '700', color: TEXT_SECONDARY },
+  txtActive: { color: colors.white },
+  txtDim: { color: TEXT_LIGHT },
+});
+
+// ─── Category Chips ────────────────────────────────────────────────────────────
+function CategoryChips({ categories, selectedCategory, onSelect }) {
+  return (
+    <View style={chip.container}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={chip.scroll}
+        bounces={false}
+      >
+        <TouchableOpacity
+          style={[chip.btn, selectedCategory === 'all' && chip.btnActive]}
+          onPress={() => onSelect('all')}
+        >
+          <Text style={[chip.txt, selectedCategory === 'all' && chip.txtActive]}>All</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[chip.btn, selectedCategory === 'combo' && chip.btnActive]}
+          onPress={() => onSelect(selectedCategory === 'combo' ? 'all' : 'combo')}
+        >
+          <Ionicons
+            name="gift-outline"
+            size={nz(12)}
+            color={selectedCategory === 'combo' ? colors.white : TEXT_SECONDARY}
+            style={{ marginRight: nz(3) }}
+          />
+          <Text style={[chip.txt, selectedCategory === 'combo' && chip.txtActive]}>Combos</Text>
+        </TouchableOpacity>
+        {categories.map(cat => (
+          <TouchableOpacity
+            key={cat._id}
+            style={[chip.btn, selectedCategory === cat._id && chip.btnActive]}
+            onPress={() => onSelect(selectedCategory === cat._id ? 'all' : cat._id)}
+          >
+            <Text style={[chip.txt, selectedCategory === cat._id && chip.txtActive]} numberOfLines={1}>
+              {cat.categoryName}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+const chip = StyleSheet.create({
+  container: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER_COLOR,
+    paddingVertical: nzVertical(7),
+  },
+  scroll: { paddingHorizontal: nz(10), gap: nz(6), flexDirection: 'row', alignItems: 'center' },
+  btn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: nz(12),
+    paddingVertical: nzVertical(5),
+    borderRadius: nz(16),
+    backgroundColor: '#F0F0F0',
+  },
+  btnActive: { backgroundColor: PRIMARY },
+  txt: { fontSize: rs(12), fontWeight: '600', color: TEXT_SECONDARY },
+  txtActive: { color: colors.white },
+});
+
+// ─── Section Letter Header ─────────────────────────────────────────────────────
+function SectionLetterHeader({ letter }) {
+  return (
+    <View style={lh.wrap}>
+      <Text style={lh.letter}>{letter}</Text>
+      <View style={lh.line} />
+    </View>
+  );
+}
+
+const lh = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: nz(14),
+    paddingVertical: nzVertical(5),
+    backgroundColor: BG,
+    gap: nz(8),
+  },
+  letter: { fontSize: rs(12), fontWeight: '800', color: PRIMARY, width: nz(16) },
+  line: { flex: 1, height: 1, backgroundColor: BORDER_COLOR },
+});
+
+// ─── Main Screen ───────────────────────────────────────────────────────────────
 export default function POSScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
   const [cart, setCart] = useState({});
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedLetter, setSelectedLetter] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCombo, setSelectedCombo] = useState(null);
   const [showProductModal, setShowProductModal] = useState(false);
@@ -187,17 +476,21 @@ export default function POSScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [dutyLoading, setDutyLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const scrollViewRef = useRef();
+  const searchRef = useRef(null);
+  const listRef = useRef(null);
 
   const { posMenu, posMenuError, fetchPOSMenu, restaurantInfo } = useUIStore();
   const { user, changeDutytoggal } = useAuthStore();
 
   const isOnDuty = user?.isOnDuty === true;
 
-  console.log(user,"uyser")
-
-  useEffect(() => { loadMenu(); }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadMenu();
+    }, [])
+  );
 
   const loadMenu = async () => {
     setIsInitialLoading(true);
@@ -205,7 +498,12 @@ export default function POSScreen() {
     setIsInitialLoading(false);
   };
 
-  // ── Duty toggle ───────────────────────────────────────────────────────────
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchPOSMenu();
+    setRefreshing(false);
+  };
+
   const handleToggleDuty = async () => {
     setDutyLoading(true);
     const result = await changeDutytoggal(!isOnDuty);
@@ -213,13 +511,42 @@ export default function POSScreen() {
     if (!result.success) Alert.alert('Error', result.error || 'Failed to update duty status');
   };
 
-  // ── Derived data ──────────────────────────────────────────────────────────
-  const regularItems = useMemo(() => posMenu?.regularItems ?? [], [posMenu]);
-  const comboItems   = useMemo(() => posMenu?.comboItems   ?? [], [posMenu]);
+  // Merge all items into one unified sorted list
+  const allItems = useMemo(() => {
+    const regular = (posMenu?.regularItems ?? []).map(it => ({ ...it, itemType: 'regular' }));
+    const combos = (posMenu?.comboItems ?? []).map(it => ({
+      ...it,
+      itemType: 'combo',
+      price: it.comboprice ?? it.price ?? 0,
+    }));
+    return [...regular, ...combos].sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '')
+    );
+  }, [posMenu]);
 
-  const filteredRegularItems = useMemo(() => {
-    let items = regularItems;
-    if (selectedCategory !== 'all') items = items.filter(it => it.categoryId === selectedCategory);
+  // Available alphabet letters from current items
+  const availableLetters = useMemo(() => {
+    const set = new Set();
+    allItems.forEach(it => {
+      const first = (it.name || '').trim().charAt(0).toUpperCase();
+      if (first && /[A-Z]/.test(first)) set.add(first);
+      else if (first) set.add('#');
+    });
+    return set;
+  }, [allItems]);
+
+  // Apply filters
+  const filteredItems = useMemo(() => {
+    let items = allItems;
+
+    // Category filter
+    if (selectedCategory === 'combo') {
+      items = items.filter(it => it.itemType === 'combo');
+    } else if (selectedCategory !== 'all') {
+      items = items.filter(it => it.categoryId === selectedCategory);
+    }
+
+    // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       items = items.filter(it =>
@@ -228,30 +555,60 @@ export default function POSScreen() {
         it.categoryName?.toLowerCase().includes(q)
       );
     }
+
+    // Alphabet filter
+    if (selectedLetter) {
+      items = items.filter(it => {
+        const first = (it.name || '').trim().charAt(0).toUpperCase();
+        if (selectedLetter === '#') return first && !/[A-Z]/.test(first);
+        return first === selectedLetter;
+      });
+    }
+
     return items;
-  }, [regularItems, selectedCategory, searchQuery]);
+  }, [allItems, selectedCategory, searchQuery, selectedLetter]);
 
-  const filteredComboItems = useMemo(() => {
-    if (!searchQuery.trim()) return comboItems;
-    const q = searchQuery.toLowerCase().trim();
-    return comboItems.filter(it =>
-      it.name?.toLowerCase().includes(q) ||
-      it.description?.toLowerCase().includes(q)
-    );
-  }, [comboItems, searchQuery]);
+  // Group by first letter for section headers
+  const groupedItems = useMemo(() => {
+    if (searchQuery.trim() || selectedLetter) {
+      // flat when searching or letter selected
+      return [{ key: 'results', items: filteredItems, isFlat: true }];
+    }
+    const groups = {};
+    filteredItems.forEach(it => {
+      const first = (it.name || '').trim().charAt(0).toUpperCase();
+      const key = /[A-Z]/.test(first) ? first : '#';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(it);
+    });
+    return Object.keys(groups).sort().map(key => ({ key, items: groups[key] }));
+  }, [filteredItems, searchQuery, selectedLetter]);
 
-  // ── Cart helpers ──────────────────────────────────────────────────────────
+  // Flat data for FlatList with section letter separators
+  const flatData = useMemo(() => {
+    const data = [];
+    groupedItems.forEach(group => {
+      if (!group.isFlat) {
+        data.push({ type: 'header', key: group.key, id: `header-${group.key}` });
+      }
+      group.items.forEach(item => {
+        data.push({ type: 'item', item, id: item.id || item._id });
+      });
+    });
+    return data;
+  }, [groupedItems]);
+
   const getCartItem = useCallback(id => cart[id], [cart]);
 
   const addToCart = useCallback(item => {
-    if (!isOnDuty) { Alert.alert('Off Duty', 'You must be on duty to add items to cart'); return; }
+    if (!isOnDuty) { Alert.alert('Off Duty', 'Go on duty to add items.'); return; }
     const id = item.id || item._id;
     setCart(prev => {
       if (prev[id]) return { ...prev, [id]: { ...prev[id], quantity: prev[id].quantity + 1 } };
-      const isCombo = item.itemType === 'combo' || item.comboData || item.comboItemCount;
+      const isCombo = item.itemType === 'combo';
       const entry = {
         id,
-        name: item.name || item.itemName || item.combofoodName || 'Item',
+        name: item.name || item.combofoodName || 'Item',
         price: item.price || item.comboprice || 0,
         image: item.image || item.categoryImage,
         isVeg: item.isVeg !== undefined ? item.isVeg : true,
@@ -277,12 +634,12 @@ export default function POSScreen() {
   }, [isOnDuty]);
 
   const increaseQuantity = useCallback(id => {
-    if (!isOnDuty) { Alert.alert('Off Duty', 'You must be on duty to modify cart'); return; }
+    if (!isOnDuty) return;
     setCart(prev => prev[id] ? { ...prev, [id]: { ...prev[id], quantity: prev[id].quantity + 1 } } : prev);
   }, [isOnDuty]);
 
   const decreaseQuantity = useCallback(id => {
-    if (!isOnDuty) { Alert.alert('Off Duty', 'You must be on duty to modify cart'); return; }
+    if (!isOnDuty) return;
     setCart(prev => {
       if (!prev[id]) return prev;
       const qty = prev[id].quantity - 1;
@@ -291,7 +648,6 @@ export default function POSScreen() {
     });
   }, [isOnDuty]);
 
-  // ── Cart totals ───────────────────────────────────────────────────────────
   const cartItemsCount = useMemo(
     () => Object.values(cart).reduce((s, it) => s + (it?.quantity || 0), 0),
     [cart]
@@ -308,140 +664,91 @@ export default function POSScreen() {
     [cart]
   );
 
-  // ── Navigate to CartScreen ────────────────────────────────────────────────
   const goToCart = () => {
-    if (!isOnDuty) { Alert.alert('Off Duty', 'You must be on duty to view cart'); return; }
+    if (!isOnDuty) { Alert.alert('Off Duty', 'Go on duty to view cart.'); return; }
     if (cartItemsCount === 0) return;
     navigation.navigate('Cart', { cart, onCartChange: updatedCart => setCart(updatedCart ?? {}) });
   };
 
-  // ── Product / combo modal ─────────────────────────────────────────────────
-  const handleProductPress = product => {
-    if (!isOnDuty) { Alert.alert('Off Duty', 'You must be on duty to view product details'); return; }
-    if (product.itemType === 'combo') { setSelectedCombo(product); setShowComboModal(true); }
-    else { setSelectedProduct(product); setShowProductModal(true); }
+  const handleItemPress = item => {
+    if (!isOnDuty) { Alert.alert('Off Duty', 'Go on duty to view item details.'); return; }
+    if (item.itemType === 'combo') { setSelectedCombo(item); setShowComboModal(true); }
+    else { setSelectedProduct(item); setShowProductModal(true); }
   };
 
-  // ── Clear cart on off duty ────────────────────────────────────────────────
   useEffect(() => {
     if (!isOnDuty && cartItemsCount > 0) setCart({});
   }, [isOnDuty]);
 
-  // ── Render helpers ────────────────────────────────────────────────────────
-  const renderRegularItems = () => (
-    <FlatList
-      data={filteredRegularItems}
-      keyExtractor={item => (item.id || item._id).toString()}
-      renderItem={({ item }) => (
-        <MenuItem
-          item={item}
-          quantity={getCartItem(item.id)?.quantity || 0}
-          onPress={() => handleProductPress(item)}
-          onAdd={() => addToCart(item)}
-          onIncrease={() => increaseQuantity(item.id)}
-          onDecrease={() => decreaseQuantity(item.id)}
-        />
-      )}
-      showsVerticalScrollIndicator={false}
-      scrollEnabled={false}
-    />
-  );
+  const clearSearch = useCallback(() => {
+    setSearchQuery('');
+    setSelectedLetter(null);
+  }, []);
 
-  const renderComboItems = () => (
-    <FlatList
-      data={filteredComboItems}
-      keyExtractor={item => (item.id || item._id).toString()}
-      renderItem={({ item }) => (
-        <MenuItem
-          item={item}
-          quantity={getCartItem(item.id)?.quantity || 0}
-          onPress={() => handleProductPress(item)}
-          onAdd={() => addToCart(item)}
-          onIncrease={() => increaseQuantity(item.id)}
-          onDecrease={() => decreaseQuantity(item.id)}
-        />
-      )}
-      showsVerticalScrollIndicator={false}
-      scrollEnabled={false}
-    />
-  );
+  const renderRow = useCallback(({ item: row }) => {
+    if (row.type === 'header') {
+      return <SectionLetterHeader letter={row.key} />;
+    }
+    const it = row.item;
+    const id = it.id || it._id;
+    return (
+      <ItemRow
+        item={it}
+        quantity={getCartItem(id)?.quantity || 0}
+        onPress={handleItemPress}
+        onAdd={() => addToCart(it)}
+        onIncrease={() => increaseQuantity(id)}
+        onDecrease={() => decreaseQuantity(id)}
+      />
+    );
+  }, [getCartItem, addToCart, increaseQuantity, decreaseQuantity, handleItemPress]);
 
-  const showEmpty = filteredRegularItems.length === 0 && filteredComboItems.length === 0;
+  const ItemSeparator = useCallback(({ leadingItem }) => {
+    if (!leadingItem || leadingItem.type === 'header') return null;
+    return <View style={styles.divider} />;
+  }, []);
 
-  // ── Loading ───────────────────────────────────────────────────────────────
-  if (isInitialLoading) {
+  // ── Off Duty State ──────────────────────────────────────────────────────────
+  if (!isInitialLoading && !isOnDuty) {
     return (
       <>
-        <StatusBar style="dark" backgroundColor={colors.background} />
+        <StatusBar style="dark" backgroundColor={colors.white} translucent={false} />
         <SafeAreaView style={styles.container} edges={['top']}>
-          <View style={styles.header}>
-            <View style={{ flex: 1 }}>
-              <SkeletonBox width={nz(120)} height={nzVertical(22)} borderRadius={nz(4)} />
-              <SkeletonBox width={nz(80)} height={nzVertical(12)} borderRadius={nz(4)} style={{ marginTop: nzVertical(4) }} />
-            </View>
-            <SkeletonBox width={nz(40)} height={nz(40)} borderRadius={nz(20)} />
-          </View>
-          <POSMenuSkeleton />
-        </SafeAreaView>
-      </>
-    );
-  }
-
-  // ── Error ─────────────────────────────────────────────────────────────────
-  if (posMenuError && !posMenu) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.center}>
-          <Ionicons name="alert-circle-outline" size={nz(48)} color={colors.error} />
-          <Text style={styles.errorText}>{posMenuError}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={loadMenu}>
-            <Text style={styles.retryBtnText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // ── Off Duty ──────────────────────────────────────────────────────────────
-  if (!isOnDuty) {
-    return (
-      <>
-        <StatusBar style="dark" backgroundColor={colors.background} />
-        <SafeAreaView style={styles.container} edges={['top']}>
-          <View style={styles.header}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.headerTitle}>{restaurantInfo?.name || 'M Cafe'}</Text>
-              <Text style={styles.headerSubtitle}>{restaurantInfo?.location || 'Point of Sale'}</Text>
-            </View>
+          <View style={styles.compactHeader}>
+            <Text style={styles.compactHeaderTitle}>POS</Text>
             <TouchableOpacity
-              style={[styles.dutyButton, styles.dutyButtonOff]}
+              style={[styles.dutyPill, styles.dutyPillOff]}
               onPress={handleToggleDuty}
               disabled={dutyLoading}
               activeOpacity={0.8}
             >
               {dutyLoading
                 ? <ActivityIndicator size="small" color={colors.white} />
-                : <><View style={styles.dutyIndicator} /><Text style={styles.dutyButtonText}>Off Duty</Text></>}
+                : <>
+                    <View style={[styles.dutyDot, { backgroundColor: '#F44336' }]} />
+                    <Text style={[styles.dutyPillText, { color: '#C62828' }]}>Off Duty</Text>
+                  </>}
             </TouchableOpacity>
           </View>
 
-          <View style={styles.offDutyContainer}>
-            <View style={styles.offDutyIconContainer}>
-              <Ionicons name="moon-outline" size={nz(80)} color={TEXT_LIGHT} />
+          <View style={styles.offDutyWrap}>
+            <View style={styles.offDutyIcon}>
+              <Ionicons name="moon-outline" size={nz(64)} color={TEXT_LIGHT} />
             </View>
             <Text style={styles.offDutyTitle}>You're Off Duty</Text>
-            <Text style={styles.offDutySubtitle}>
-              Turn on your duty status to start taking orders and serving customers
-            </Text>
+            <Text style={styles.offDutySub}>Turn on duty to start taking orders</Text>
             <TouchableOpacity
-              style={styles.goOnDutyButton}
+              style={styles.goOnDutyBtn}
               onPress={handleToggleDuty}
               disabled={dutyLoading}
               activeOpacity={0.85}
             >
               {dutyLoading
                 ? <ActivityIndicator size="small" color={colors.white} />
-                : <><Ionicons name="sunny-outline" size={nz(20)} color={colors.white} /><Text style={styles.goOnDutyButtonText}>Go On Duty</Text></>}
+                : <>
+                    <Ionicons name="sunny-outline" size={nz(18)} color={colors.white} />
+                    <Text style={styles.goOnDutyText}>Go On Duty</Text>
+                  </>}
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -449,60 +756,162 @@ export default function POSScreen() {
     );
   }
 
-  // ── Main POS ──────────────────────────────────────────────────────────────
+  // ── Loading State ───────────────────────────────────────────────────────────
+  if (isInitialLoading) {
+    return (
+      <>
+        <StatusBar style="dark" backgroundColor={colors.white} translucent={false} />
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.compactHeader}>
+            <SkeletonBox width={nz(60)} height={nzVertical(18)} />
+            <SkeletonBox width={nz(90)} height={nzVertical(30)} borderRadius={nz(15)} />
+          </View>
+          <POSSkeleton />
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  // ── Error State ─────────────────────────────────────────────────────────────
+  if (posMenuError && !posMenu) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Ionicons name="alert-circle-outline" size={nz(48)} color={colors.error} />
+        <Text style={{ fontSize: rs(14), color: colors.error, margin: nzVertical(12), textAlign: 'center' }}>
+          {posMenuError}
+        </Text>
+        <TouchableOpacity
+          style={{ backgroundColor: PRIMARY, paddingHorizontal: nz(24), paddingVertical: nzVertical(12), borderRadius: nz(8) }}
+          onPress={loadMenu}
+        >
+          <Text style={{ fontSize: rs(14), fontWeight: '600', color: colors.white }}>Retry</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  // ── Main UI ─────────────────────────────────────────────────────────────────
   return (
     <>
-      <StatusBar style="dark" backgroundColor={colors.background} />
+      <StatusBar style="dark" translucent={false} backgroundColor={colors.white} />
       <SafeAreaView style={styles.container} edges={['top']}>
 
-        {/* Header with animated search */}
-        <HeaderSearchBar
-          restaurantInfo={restaurantInfo}
-          dutyLoading={dutyLoading}
-          handleToggleDuty={handleToggleDuty}
-          isOnDuty={isOnDuty}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-        />
+        {/* ── Compact Header ── */}
+        <View style={styles.compactHeader}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.compactHeaderTitle}>POS</Text>
+            {cartItemsCount > 0 && (
+              <View style={styles.cartCountBadge}>
+                <Text style={styles.cartCountText}>{cartItemsCount}</Text>
+              </View>
+            )}
+          </View>
+          <TouchableOpacity
+            style={[styles.dutyPill, styles.dutyPillOn]}
+            onPress={handleToggleDuty}
+            disabled={dutyLoading}
+            activeOpacity={0.8}
+          >
+            {dutyLoading
+              ? <ActivityIndicator size="small" color={PRIMARY} />
+              : <>
+                  <View style={[styles.dutyDot, { backgroundColor: '#4CAF50' }]} />
+                  <Text style={[styles.dutyPillText, { color: '#2E7D32' }]}>On Duty</Text>
+                </>}
+          </TouchableOpacity>
+        </View>
 
-        {/* Category tabs — hidden while searching */}
-        {!searchQuery && posMenu?.categories && (
-          <CategoryTabs
-            categories={posMenu.categories}
+        {/* ── Search Bar (always visible, full width) ── */}
+        <View style={styles.searchWrap}>
+          <View style={[styles.searchBox, searchQuery.length > 0 && styles.searchBoxActive]}>
+            <Ionicons name="search-outline" size={nz(18)} color={searchQuery ? PRIMARY : TEXT_LIGHT} />
+            <TextInput
+              ref={searchRef}
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={text => { setSearchQuery(text); setSelectedLetter(null); }}
+              placeholder="Search items, combos, categories…"
+              placeholderTextColor={TEXT_LIGHT}
+              returnKeyType="search"
+              autoCorrect={false}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={clearSearch} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close-circle" size={nz(16)} color={TEXT_LIGHT} />
+              </TouchableOpacity>
+            )}
+          </View>
+          {/* Item count summary */}
+          <Text style={styles.resultCount}>
+            {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
+
+        {/* ── Category Chips ── */}
+        {!searchQuery && (
+          <CategoryChips
+            categories={posMenu?.categories || []}
             selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
+            onSelect={cat => { setSelectedCategory(cat); setSelectedLetter(null); }}
           />
         )}
 
-        {/* Content */}
-        {showEmpty ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="search-outline" size={nz(48)} color={TEXT_LIGHT} />
-            <Text style={styles.emptyText}>No items found</Text>
-          </View>
-        ) : (
-          <ScrollView
-            ref={scrollViewRef}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + nzVertical(80) }]}
-            bounces
-          >
-            {filteredRegularItems.length > 0 && (
-              <>
-                <MenuSectionHeader title="Menu Items" itemCount={filteredRegularItems.length} />
-                {renderRegularItems()}
-              </>
-            )}
-            {filteredComboItems.length > 0 && (
-              <>
-                {filteredRegularItems.length > 0 && <View style={styles.sectionDivider} />}
-                <MenuSectionHeader title="Combos" itemCount={filteredComboItems.length} />
-                {renderComboItems()}
-              </>
-            )}
-          </ScrollView>
+        {/* ── Alphabet Strip ── */}
+        {!searchQuery && (
+          <AlphaStrip
+            availableLetters={availableLetters}
+            selectedLetter={selectedLetter}
+            onSelect={letter => setSelectedLetter(letter)}
+          />
         )}
 
+        {/* ── Item List ── */}
+        {filteredItems.length === 0 ? (
+          <ScrollView
+            contentContainerStyle={styles.emptyWrap}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[PRIMARY]} tintColor={PRIMARY} />
+            }
+          >
+            <Ionicons name="search-outline" size={nz(44)} color={TEXT_LIGHT} />
+            <Text style={styles.emptyText}>No items found</Text>
+            {(searchQuery || selectedLetter || selectedCategory !== 'all') && (
+              <TouchableOpacity style={styles.clearFiltersBtn} onPress={() => {
+                setSearchQuery('');
+                setSelectedLetter(null);
+                setSelectedCategory('all');
+              }}>
+                <Text style={styles.clearFiltersTxt}>Clear filters</Text>
+              </TouchableOpacity>
+            )}
+          </ScrollView>
+        ) : (
+          <FlatList
+            ref={listRef}
+            data={flatData}
+            keyExtractor={row => row.id?.toString() || row.key}
+            renderItem={renderRow}
+            ItemSeparatorComponent={ItemSeparator}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + nzVertical(90) }]}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[PRIMARY]} tintColor={PRIMARY} />
+            }
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            removeClippedSubviews
+            maxToRenderPerBatch={15}
+            windowSize={10}
+            initialNumToRender={12}
+            getItemLayout={(data, index) => ({
+              length: nzVertical(78),
+              offset: nzVertical(78) * index,
+              index,
+            })}
+          />
+        )}
+
+        {/* ── Floating Cart ── */}
         <FloatingCart
           itemsCount={cartItemsCount}
           total={cartTotal}
@@ -531,84 +940,130 @@ export default function POSScreen() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  center:    { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: BG },
 
-  errorText:    { fontSize: rs(16), color: colors.error, textAlign: 'center', marginVertical: nzVertical(16) },
-  retryBtn:     { backgroundColor: PRIMARY, paddingHorizontal: nz(24), paddingVertical: nzVertical(12), borderRadius: nz(8) },
-  retryBtnText: { fontSize: rs(14), fontWeight: '600', color: colors.white },
-
-  // ── Header ────────────────────────────────────────────────────────────────
-  header: {
+  // ── Header ──
+  compactHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: nz(16),
-    paddingVertical: nzVertical(12),
+    justifyContent: 'space-between',
+    paddingHorizontal: nz(14),
+    paddingVertical: nzVertical(10),
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: BORDER_COLOR,
-    gap: nz(8),
   },
-  headerTitle:    { fontSize: rs(22), fontWeight: '700', color: TEXT_PRIMARY },
-  headerSubtitle: { fontSize: rs(12), color: TEXT_LIGHT, marginTop: nzVertical(2) },
-
-  // Animated search row inside header
-  headerSearchWrap: {
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: nz(8) },
+  compactHeaderTitle: { fontSize: rs(20), fontWeight: '800', color: TEXT_PRIMARY, letterSpacing: 0.5 },
+  cartCountBadge: {
+    backgroundColor: PRIMARY,
+    width: nz(20),
+    height: nz(20),
+    borderRadius: nz(10),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cartCountText: { fontSize: rs(10), fontWeight: '800', color: colors.white },
+  dutyPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F4F4F4',
-    borderRadius: nz(10),
-    paddingHorizontal: nz(10),
-    height: nzVertical(40),
-    overflow: 'hidden',
+    gap: nz(5),
+    paddingHorizontal: nz(12),
+    paddingVertical: nzVertical(6),
+    borderRadius: nz(16),
+    borderWidth: 1.5,
   },
-  headerSearchInput: {
+  dutyPillOn: { backgroundColor: '#F1FFF5', borderColor: '#A5D6A7' },
+  dutyPillOff: { backgroundColor: '#FFF5F5', borderColor: '#FFCDD2' },
+  dutyDot: { width: nz(7), height: nz(7), borderRadius: nz(4) },
+  dutyPillText: { fontSize: rs(12), fontWeight: '700' },
+
+  // ── Search ──
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: nz(14),
+    paddingVertical: nzVertical(8),
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER_COLOR,
+    gap: nz(10),
+  },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: BG,
+    borderRadius: nz(12),
+    paddingHorizontal: nz(12),
+    height: nzVertical(44),
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    gap: nz(8),
+  },
+  searchBoxActive: {
+    borderColor: PRIMARY + '40',
+    backgroundColor: PRIMARY_LIGHT,
+  },
+  searchInput: {
     flex: 1,
     fontSize: rs(14),
     color: TEXT_PRIMARY,
     paddingVertical: 0,
   },
-
-  // Search / close icon button
-  headerIconBtn: {
-    width: nz(40),
-    height: nz(40),
-    borderRadius: nz(20),
-    backgroundColor: PRIMARY_LIGHT,
-    justifyContent: 'center',
-    alignItems: 'center',
+  resultCount: {
+    fontSize: rs(11),
+    fontWeight: '600',
+    color: TEXT_LIGHT,
+    minWidth: nz(44),
+    textAlign: 'right',
   },
 
-  // ── Duty button ───────────────────────────────────────────────────────────
-  dutyButton:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: nz(12), paddingVertical: nzVertical(8), borderRadius: nz(20), gap: nz(6), borderWidth: 1.5 },
-  dutyButtonOff: { backgroundColor: '#FFEBEE', borderColor: '#F44336' },
-  dutyIndicator: { width: nz(8), height: nz(8), borderRadius: nz(4), backgroundColor: '#F44336' },
-  dutyButtonText:{ fontSize: rs(12), fontWeight: '600' },
+  // ── List ──
+  listContent: { backgroundColor: BG },
+  divider: { height: 1, backgroundColor: BORDER_COLOR, marginLeft: nz(82) },
 
-  // ── Off duty screen ───────────────────────────────────────────────────────
-  offDutyContainer:     { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: nz(40) },
-  offDutyIconContainer: { width: nz(140), height: nz(140), borderRadius: nz(70), backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', marginBottom: nzVertical(24) },
-  offDutyTitle:         { fontSize: rs(24), fontWeight: '700', color: TEXT_PRIMARY, marginBottom: nzVertical(8) },
-  offDutySubtitle:      { fontSize: rs(14), color: TEXT_LIGHT, textAlign: 'center', lineHeight: nzVertical(20), marginBottom: nzVertical(32) },
-  goOnDutyButton:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: nz(8), backgroundColor: PRIMARY, paddingHorizontal: nz(32), paddingVertical: nzVertical(14), borderRadius: nz(12), shadowColor: PRIMARY, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  goOnDutyButtonText:   { fontSize: rs(16), fontWeight: '700', color: colors.white },
+  // ── Empty ──
+  emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: nzVertical(80), gap: nzVertical(12) },
+  emptyText: { fontSize: rs(15), color: TEXT_LIGHT, fontWeight: '500' },
+  clearFiltersBtn: {
+    marginTop: nzVertical(4),
+    paddingHorizontal: nz(16),
+    paddingVertical: nzVertical(8),
+    backgroundColor: PRIMARY_LIGHT,
+    borderRadius: nz(10),
+    borderWidth: 1,
+    borderColor: PRIMARY + '30',
+  },
+  clearFiltersTxt: { fontSize: rs(13), fontWeight: '600', color: PRIMARY },
 
-  // ── Content ───────────────────────────────────────────────────────────────
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: nz(40) },
-  emptyText:      { fontSize: rs(14), color: TEXT_LIGHT, marginTop: nzVertical(12) },
-  scrollContent:  { paddingHorizontal: nz(12), paddingTop: nzVertical(8) },
-  sectionDivider: { height: 1, backgroundColor: BORDER_COLOR, marginVertical: nzVertical(16), marginHorizontal: nz(4) },
-
-  // ── Skeleton ──────────────────────────────────────────────────────────────
-  skeletonScrollContent:  { paddingHorizontal: nz(12), paddingTop: nzVertical(8) },
-  skeletonTabsContainer:  { marginBottom: nzVertical(16) },
-  skeletonTabsScroll:     { paddingHorizontal: nz(4), gap: nz(8) },
-  skeletonSection:        { backgroundColor: '#FFFFFF', borderRadius: nz(12), marginBottom: nzVertical(12), overflow: 'hidden' },
-  skeletonSectionHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: nz(14), paddingVertical: nzVertical(12), borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
-  skeletonItem:           { flexDirection: 'row', alignItems: 'center', paddingHorizontal: nz(14), paddingVertical: nzVertical(12), gap: nz(12) },
-  skeletonItemBody:       { flex: 1 },
-  skeletonPriceRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  skeletonDivider:        { height: 1, backgroundColor: '#F5F5F5', marginHorizontal: nz(14) },
+  // ── Off Duty ──
+  offDutyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: nz(40) },
+  offDutyIcon: {
+    width: nz(120),
+    height: nz(120),
+    borderRadius: nz(60),
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: nzVertical(20),
+  },
+  offDutyTitle: { fontSize: rs(22), fontWeight: '700', color: TEXT_PRIMARY, marginBottom: nzVertical(6) },
+  offDutySub: { fontSize: rs(13), color: TEXT_LIGHT, textAlign: 'center', marginBottom: nzVertical(28) },
+  goOnDutyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: nz(8),
+    backgroundColor: PRIMARY,
+    paddingHorizontal: nz(28),
+    paddingVertical: nzVertical(13),
+    borderRadius: nz(12),
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  goOnDutyText: { fontSize: rs(15), fontWeight: '700', color: colors.white },
 });

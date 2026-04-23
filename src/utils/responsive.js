@@ -36,7 +36,6 @@ export const deviceInfo = {
   scaleFactor: _static.sc,
 };
 
-// Helper functions for vertical scaling based on height
 export const nzVertical = (size) => {
   const { height } = Dimensions.get('window');
   const baseH = 812;

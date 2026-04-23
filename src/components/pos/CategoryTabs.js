@@ -7,8 +7,6 @@ const TEXT_SECONDARY = '#666666';
 const BORDER_COLOR = '#F0F0F0';
 
 export default function CategoryTabs({ categories, selectedCategory, onSelectCategory }) {
-  console.log('Rendering CategoryTabs with categories:', categories);
-  
   return (
     <View style={styles.categoryContainer}>
       <ScrollView 
@@ -16,7 +14,6 @@ export default function CategoryTabs({ categories, selectedCategory, onSelectCat
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* All Category Tab */}
         <TouchableOpacity
           style={[styles.categoryTab, selectedCategory === 'all' && styles.categoryTabActive]}
           onPress={() => onSelectCategory('all')}
@@ -29,7 +26,6 @@ export default function CategoryTabs({ categories, selectedCategory, onSelectCat
           </Text>
         </TouchableOpacity>
         
-        {/* Category Tabs with Images */}
         {categories.map(cat => {
           const hasImage = cat.categoryImage && cat.categoryImage !== null;
           
@@ -105,7 +101,7 @@ const styles = StyleSheet.create({
     minWidth: nz(70),
   },
   categoryTabActive: {
-    backgroundColor: PRIMARY + '10', // Light tint instead of solid for better image visibility
+    backgroundColor: PRIMARY + '10', 
   },
   categoryImage: {
     width: nz(50),

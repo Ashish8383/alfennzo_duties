@@ -13,7 +13,6 @@ import { nz, nzVertical, rs } from '../utils/responsive';
 
 const Tab = createBottomTabNavigator();
 
-// ─── Tab config ───────────────────────────────────────────────────────────────
 const TAB_CONFIG = {
   Home: {
     label: 'Home',
@@ -49,7 +48,7 @@ const TAB_CONFIG = {
     ),
   },
   Setting: {
-    label: 'Setting',
+    label: 'Settings',
     activeColor: colors.primary,
     icon: (focused) => (
       <Ionicons
@@ -61,7 +60,6 @@ const TAB_CONFIG = {
   },
 };
 
-// ─── Single Tab Button ────────────────────────────────────────────────────────
 function TabBarButton({ onPress, onLongPress, isFocused, routeName }) {
   const config = TAB_CONFIG[routeName];
   const activeColor = config?.activeColor ?? colors.primary;
@@ -79,13 +77,10 @@ function TabBarButton({ onPress, onLongPress, isFocused, routeName }) {
       activeOpacity={0.7}
       style={styles.tabButton}
     >
-      {/* Active indicator bar at top */}
       <View style={[styles.activeBar, isFocused && { backgroundColor: activeColor }]} />
 
-      {/* Icon */}
       {config?.icon(isFocused)}
 
-      {/* Label */}
       <Text style={[
         styles.tabLabel,
         { color: isFocused ? activeColor : colors.textLighter },
@@ -97,7 +92,6 @@ function TabBarButton({ onPress, onLongPress, isFocused, routeName }) {
   );
 }
 
-// ─── Custom Tab Bar ───────────────────────────────────────────────────────────
 function CustomTabBar({ state, navigation }) {
   const insets = useSafeAreaInsets();
 
@@ -138,7 +132,6 @@ function CustomTabBar({ state, navigation }) {
   );
 }
 
-// ─── Navigator ────────────────────────────────────────────────────────────────
 export default function BottomTabNavigator() {
   return (
     <Tab.Navigator
@@ -154,7 +147,6 @@ export default function BottomTabNavigator() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',

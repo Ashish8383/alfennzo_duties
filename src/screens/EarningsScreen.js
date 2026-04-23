@@ -1,28 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import useAuthStore from '../stores/authStore';
 import useEarningsStore from '../stores/earningsStore';
 import { nz, rs, useResponsive } from '../utils/responsive';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PAGINATION LIMITS
-// ─────────────────────────────────────────────────────────────────────────────
 const EARN_LIMIT = 10;
-const PAY_LIMIT  = 10;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COLOR PALETTE
-// ─────────────────────────────────────────────────────────────────────────────
 const C = {
   primary:       '#0B735F',
   primaryDark:   '#085C4C',
@@ -53,9 +47,6 @@ const C = {
   rXl:           nz(20),
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
 const currency = (n) =>
   `₹${Number(n || 0).toLocaleString('en-IN', {
     minimumFractionDigits: 2,
@@ -108,10 +99,6 @@ const getStatus = (s) =>
     fg: C.textLighter,
     bg: C.background,
   };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// LETTER BADGE
-// ─────────────────────────────────────────────────────────────────────────────
 const LetterBadge = ({ letter, bg, fg }) => (
   <View style={[lb.wrap, { backgroundColor: bg }]}>
     <Text style={[lb.txt, { color: fg }]}>{letter}</Text>
@@ -125,9 +112,7 @@ const lb = StyleSheet.create({
   txt: { fontSize: nz(15), fontWeight: '800' },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STATUS BADGE
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Status Badge ─────────────────────────────────────────────────────────────
 const StatusBadge = ({ status }) => {
   const cfg = getStatus(status);
   return (
@@ -147,9 +132,6 @@ const sb = StyleSheet.create({
   txt: { fontSize: nz(11), fontWeight: '700', letterSpacing: 0.3 },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STATS CARD
-// ─────────────────────────────────────────────────────────────────────────────
 const StatsCard = ({ data, loading }) => {
   if (loading) return (
     <View style={[crd.wrap, { paddingVertical: rs(44), alignItems: 'center', gap: rs(12) }]}>
@@ -169,10 +151,8 @@ const StatsCard = ({ data, loading }) => {
 
   return (
     <View style={crd.wrap}>
-      {/* Accent bar on top */}
       <View style={crd.accentBar} />
 
-      {/* Grand total + status */}
       <View style={crd.headRow}>
         <View style={{ flex: 1 }}>
           <Text style={crd.eyebrow}>MONTHLY TOTAL</Text>
@@ -184,10 +164,8 @@ const StatsCard = ({ data, loading }) => {
         <StatusBadge status={payoutStatus} />
       </View>
 
-      {/* Divider */}
       <View style={crd.divider} />
 
-      {/* Three stat tiles */}
       <View style={crd.tiles}>
         <View style={crd.tile}>
           <Text style={crd.tileVal}>{currency(baseSalary)}</Text>
@@ -205,16 +183,13 @@ const StatsCard = ({ data, loading }) => {
         </View>
       </View>
 
-      {/* Divider */}
       <View style={crd.divider} />
 
-      {/* Split bar */}
       <View style={crd.barBg}>
         <View style={[crd.barPrimary, { flex: userPct || 0.001 }]} />
         <View style={[crd.barAmber,   { flex: (1 - userPct) || 0.001 }]} />
       </View>
 
-      {/* Legend */}
       <View style={crd.legend}>
         <View style={crd.legendItem}>
           <View style={[crd.dot, { backgroundColor: C.primary }]} />
@@ -275,9 +250,6 @@ const crd = StyleSheet.create({
   legendCount: { fontWeight: '400', color: C.textLight },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MONTH PICKER
-// ─────────────────────────────────────────────────────────────────────────────
 const MonthPicker = ({ month, onPrev, onNext }) => {
   const locked = isThisMonth(month);
   return (
@@ -330,11 +302,7 @@ const mp = StyleSheet.create({
   },
   chipTxt:    { fontSize: nz(10), fontWeight: '700', color: C.primary, letterSpacing: 0.3 },
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SECTION TITLE
-// ─────────────────────────────────────────────────────────────────────────────
-const SectionTitle = ({ title, total }) => (
+const SectionTitle = ({ title, total, action, onAction }) => (
   <View style={sec.row}>
     <View style={sec.bar} />
     <Text style={sec.title}>{title}</Text>
@@ -343,22 +311,26 @@ const SectionTitle = ({ title, total }) => (
         <Text style={sec.badgeTxt}>{total}</Text>
       </View>
     )}
+    {action && (
+      <TouchableOpacity onPress={onAction} activeOpacity={0.7} style={sec.action}>
+        <Text style={sec.actionTxt}>{action}</Text>
+        <Ionicons name="chevron-forward" size={nz(13)} color={C.primary} />
+      </TouchableOpacity>
+    )}
   </View>
 );
 const sec = StyleSheet.create({
-  row:      { flexDirection: 'row', alignItems: 'center', gap: rs(8), marginBottom: rs(10) },
-  bar:      { width: rs(3), height: rs(16), backgroundColor: C.primary, borderRadius: rs(2) },
-  title:    { flex: 1, fontSize: nz(14), fontWeight: '700', color: C.text, letterSpacing: 0.1 },
+  row:       { flexDirection: 'row', alignItems: 'center', gap: rs(8), marginBottom: rs(10) },
+  bar:       { width: rs(3), height: rs(16), backgroundColor: C.primary, borderRadius: rs(2) },
+  title:     { flex: 1, fontSize: nz(14), fontWeight: '700', color: C.text, letterSpacing: 0.1 },
   badge: {
     backgroundColor: C.primaryLight, paddingHorizontal: rs(9),
     paddingVertical: rs(3), borderRadius: nz(20),
   },
-  badgeTxt: { fontSize: nz(11), fontWeight: '700', color: C.primary },
+  badgeTxt:  { fontSize: nz(11), fontWeight: '700', color: C.primary },
+  action:    { flexDirection: 'row', alignItems: 'center', gap: rs(2) },
+  actionTxt: { fontSize: nz(12), fontWeight: '600', color: C.primary },
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PAGINATION
-// ─────────────────────────────────────────────────────────────────────────────
 const Pagination = ({ pagination, onPage, loading }) => {
   const { currentPage = 1, totalPages = 1, totalDocuments = 0 } = pagination || {};
   if (totalPages <= 1) return null;
@@ -380,7 +352,6 @@ const Pagination = ({ pagination, onPage, loading }) => {
         {'   ·   '}
         <Text style={pag.metaBold}>{totalDocuments}</Text> records
       </Text>
-
       <View style={pag.controls}>
         <TouchableOpacity
           style={[pag.navBtn, prevDisabled && pag.navBtnOff]}
@@ -421,9 +392,7 @@ const Pagination = ({ pagination, onPage, loading }) => {
             <ActivityIndicator size="small" color={C.white} style={{ width: nz(14) }} />
           ) : (
             <>
-              <Text style={[pag.navTxt, pag.navTxtFill, nextDisabled && pag.navTxtOff]}>
-                Next
-              </Text>
+              <Text style={[pag.navTxt, pag.navTxtFill, nextDisabled && pag.navTxtOff]}>Next</Text>
               <Ionicons name="chevron-forward" size={nz(16)} color={nextDisabled ? C.textLighter : C.white} />
             </>
           )}
@@ -451,24 +420,16 @@ const pag = StyleSheet.create({
   pageTxtActive: { color: C.primary, fontWeight: '800' },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EARNING ROW
-// ─────────────────────────────────────────────────────────────────────────────
 const EarningRow = ({ item, isLast }) => {
   const isUser  = item.orderType === 'user_order';
   const shortId = (item.orderId || '').split('#').filter(Boolean).pop()?.slice(0, 12)
                   || item._id?.slice(-8) || '—';
 
-  // Determine commission tag:
-  //   • item.incentiveAmount  → fixed ₹ value  (e.g. 10  → "+₹10.00 incentive")
-  //   • item.commissionValue  → percentage      (e.g. 5   → "5% commission")
-  //   Priority: fixed first, percentage fallback
-  const hasFixed      = item.incentiveAmount  != null && item.incentiveAmount  > 0;
-  const hasPercentage = item.commissionValue  != null && item.commissionValue  > 0;
+  const hasFixed      = item.commissionType === 'fixed' && item.commissionValue > 0;
+  const hasPercentage = item.commissionType === 'percentage' && item.commissionValue > 0;
   const showTag       = hasFixed || hasPercentage;
-
-  const tagLabel = hasFixed
-    ? `+${currency(item.incentiveAmount)} incentive`
+  const tagLabel      = hasFixed
+    ? `+ ${currency(item.commissionValue)} incentive`
     : `${item.commissionValue}% commission`;
 
   return (
@@ -493,7 +454,7 @@ const EarningRow = ({ item, isLast }) => {
           {dateLabel(item.deliveredAt)}  ·  {timeLabel(item.deliveredAt)}
         </Text>
       </View>
-      <Text style={erow.amount}>{currency(item.earningAmount)}</Text>
+      <Text style={erow.amount}>+ {currency(item.earningAmount)}</Text>
     </View>
   );
 };
@@ -519,65 +480,6 @@ const erow = StyleSheet.create({
   amount:        { fontSize: nz(15), fontWeight: '800', color: C.primary },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PAYOUT ROW
-// ─────────────────────────────────────────────────────────────────────────────
-const WalletIcon = () => (
-  <View style={prow.iconWrap}>
-    <View style={prow.walletBody}>
-      <View style={prow.walletLine} />
-    </View>
-    <View style={prow.walletFlap} />
-  </View>
-);
-
-const PayoutRow = ({ item, isLast }) => (
-  <View style={[prow.wrap, !isLast && prow.border]}>
-    <WalletIcon />
-    <View style={prow.info}>
-      <Text style={prow.month}>{monthLabel(item.payoutMonth)}</Text>
-      <Text style={prow.date}>
-        {item.paidAt ? dateLabel(item.paidAt) : 'Not disbursed yet'}
-      </Text>
-    </View>
-    <View style={prow.right}>
-      <Text style={prow.amount}>{currency(item.totalAmount)}</Text>
-      <StatusBadge status={item.status} />
-    </View>
-  </View>
-);
-const prow = StyleSheet.create({
-  wrap: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: rs(14), paddingHorizontal: rs(16), gap: rs(12),
-  },
-  border:     { borderBottomWidth: 1, borderBottomColor: C.border },
-  iconWrap: {
-    width: rs(40), height: rs(40), borderRadius: nz(10),
-    backgroundColor: C.infoBg, alignItems: 'center', justifyContent: 'center',
-  },
-  walletBody: {
-    width: rs(20), height: rs(13), borderWidth: 2,
-    borderColor: C.infoText, borderRadius: nz(3),
-    justifyContent: 'flex-end', paddingBottom: rs(2),
-  },
-  walletLine: { height: rs(2), backgroundColor: C.infoText, borderRadius: 1, marginHorizontal: rs(3) },
-  walletFlap: {
-    position: 'absolute', top: rs(6), width: rs(14), height: rs(4),
-    backgroundColor: C.infoBg, borderTopWidth: 2, borderLeftWidth: 2,
-    borderRightWidth: 2, borderColor: C.infoText,
-    borderTopLeftRadius: nz(2), borderTopRightRadius: nz(2),
-  },
-  info:   { flex: 1, gap: rs(3) },
-  month:  { fontSize: nz(13), fontWeight: '700', color: C.text },
-  date:   { fontSize: nz(11), color: C.textLight },
-  right:  { alignItems: 'flex-end', gap: rs(5) },
-  amount: { fontSize: nz(15), fontWeight: '800', color: C.text },
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// EMPTY STATE
-// ─────────────────────────────────────────────────────────────────────────────
 const Empty = ({ msg }) => (
   <View style={emp.wrap}>
     <View style={emp.circle}>
@@ -600,34 +502,29 @@ const Loader = ({ msg }) => (
     <Text style={{ fontSize: nz(13), color: C.textLight }}>{msg}</Text>
   </View>
 );
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN SCREEN
-// ─────────────────────────────────────────────────────────────────────────────
 export default function EarningsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { SW, isTablet } = useResponsive();
+  const { isTablet } = useResponsive();
 
   const [refreshing,    setRefreshing]    = useState(false);
   const [earnsChanging, setEarnsChanging] = useState(false);
-  const [payChanging,   setPayChanging]   = useState(false);
 
   const {
     monthlyStats, statsLoading, statsError,
     earningsHistory, earningsLoading, earningsError, earningsPagination,
-    payoutHistory,   payoutLoading,   payoutError,   payoutPagination,
     selectedMonth,
     initializeEarnings, changeMonth,
-    fetchEarningsHistory, fetchPayoutHistory,
+    fetchEarningsHistory,
   } = useEarningsStore();
+  const {user} = useAuthStore();
 
   useEffect(() => {
-    initializeEarnings(undefined, EARN_LIMIT, PAY_LIMIT);
+    initializeEarnings(undefined, EARN_LIMIT);
   }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await initializeEarnings(selectedMonth, EARN_LIMIT, PAY_LIMIT);
+    await initializeEarnings(selectedMonth, EARN_LIMIT);
     setRefreshing(false);
   }, [selectedMonth]);
 
@@ -641,24 +538,14 @@ export default function EarningsScreen({ navigation }) {
     setEarnsChanging(false);
   }, [selectedMonth, earningsPagination.limit]);
 
-  const onPayPage = useCallback(async (page) => {
-    setPayChanging(true);
-    await fetchPayoutHistory({
-      page,
-      limit: payoutPagination.limit || PAY_LIMIT,
-    });
-    setPayChanging(false);
-  }, [payoutPagination.limit]);
-
   const earnsSpinning = earningsLoading || earnsChanging;
-  const paySpinning   = payoutLoading   || payChanging;
-  const hPad          = isTablet ? rs(32) : rs(16);
+  const hPad = isTablet ? rs(32) : rs(16);
 
   return (
     <View style={[s.root, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor={C.surface} />
 
-      {/* ── HEADER ── */}
+      {/* Header */}
       <View style={s.header}>
         <TouchableOpacity
           onPress={() => navigation?.goBack?.()}
@@ -667,21 +554,17 @@ export default function EarningsScreen({ navigation }) {
         >
           <Ionicons name="arrow-back" size={nz(24)} color={C.black} />
         </TouchableOpacity>
-
         <Text style={s.title}>My Earnings</Text>
-
-        {/* Mirror spacer — keeps title centered */}
         <View style={{ width: nz(24) }} />
       </View>
 
-      {/* ── MONTH PICKER ── */}
+      {/* Month Picker */}
       <MonthPicker
         month={selectedMonth}
         onPrev={() => changeMonth(shiftMonth(selectedMonth, -1))}
         onNext={() => changeMonth(shiftMonth(selectedMonth, +1))}
       />
 
-      {/* ── SCROLLABLE BODY ── */}
       <ScrollView
         style={s.scroll}
         contentContainerStyle={[
@@ -698,7 +581,6 @@ export default function EarningsScreen({ navigation }) {
           />
         }
       >
-        {/* Stats Card */}
         {statsError ? (
           <View style={s.errCard}>
             <Text style={s.errTxt}>{statsError}</Text>
@@ -710,7 +592,6 @@ export default function EarningsScreen({ navigation }) {
           <StatsCard data={monthlyStats} loading={statsLoading} />
         )}
 
-        {/* ── TRANSACTIONS ── */}
         <View>
           <SectionTitle
             title="Transactions"
@@ -747,50 +628,27 @@ export default function EarningsScreen({ navigation }) {
           </View>
         </View>
 
-        {/* ── PAYOUT HISTORY ── */}
-        <View>
-          <SectionTitle
-            title="Payout History"
-            total={payoutPagination.totalDocuments}
-          />
-          <View style={s.listCard}>
-            {payoutError ? (
-              <Empty msg={payoutError} />
-            ) : paySpinning && payoutHistory.length === 0 ? (
-              <Loader msg="Loading payouts…" />
-            ) : payoutHistory.length === 0 ? (
-              <Empty msg="No payout records found" />
-            ) : (
-              <>
-                {paySpinning && (
-                  <View style={s.dimOverlay}>
-                    <ActivityIndicator color={C.primary} size="large" />
-                  </View>
-                )}
-                {payoutHistory.map((item, i) => (
-                  <PayoutRow
-                    key={item._id}
-                    item={item}
-                    isLast={i === payoutHistory.length - 1}
-                  />
-                ))}
-                <Pagination
-                  pagination={payoutPagination}
-                  onPage={onPayPage}
-                  loading={paySpinning}
-                />
-              </>
-            )}
+        <TouchableOpacity
+          style={s.payoutLink}
+          onPress={() => navigation?.navigate?.('PayoutHistory')}
+          activeOpacity={0.8}
+        >
+          <View style={s.payoutLinkLeft}>
+            <View style={s.payoutLinkIcon}>
+              <Ionicons name="wallet-outline" size={nz(20)} color={C.primary} />
+            </View>
+            <View>
+              <Text style={s.payoutLinkTitle}>Payout History</Text>
+              <Text style={s.payoutLinkSub}>View all your salary disbursements</Text>
+            </View>
           </View>
-        </View>
+          <Ionicons name="chevron-forward" size={nz(20)} color={C.textLighter} />
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ROOT STYLES
-// ─────────────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   root:   { flex: 1, backgroundColor: C.background },
   scroll: { flex: 1 },
@@ -839,12 +697,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FECACA',
   },
-  errTxt: {
-    fontSize: nz(13),
-    color: C.error,
-    textAlign: 'center',
-    lineHeight: nz(20),
-  },
+  errTxt:  { fontSize: nz(13), color: C.error, textAlign: 'center', lineHeight: nz(20) },
   retryBtn: {
     backgroundColor: C.primary,
     paddingHorizontal: rs(22),
@@ -852,4 +705,28 @@ const s = StyleSheet.create({
     borderRadius: nz(20),
   },
   retryTxt: { color: C.white, fontWeight: '700', fontSize: nz(13) },
+
+  payoutLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: C.surface,
+    borderRadius: C.r,
+    padding: rs(16),
+    borderWidth: 1,
+    borderColor: C.border,
+    shadowColor: C.shadow,
+    shadowOffset: { width: 0, height: rs(2) },
+    shadowOpacity: 1,
+    shadowRadius: rs(8),
+    elevation: 3,
+  },
+  payoutLinkLeft: { flexDirection: 'row', alignItems: 'center', gap: rs(12) },
+  payoutLinkIcon: {
+    width: rs(40), height: rs(40), borderRadius: nz(10),
+    backgroundColor: C.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  payoutLinkTitle: { fontSize: nz(14), fontWeight: '700', color: C.text },
+  payoutLinkSub:   { fontSize: nz(11), color: C.textLight, marginTop: rs(2) },
 });

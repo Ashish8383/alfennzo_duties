@@ -25,7 +25,6 @@ const GlobalPermissionModal = ({ visible, onClose, onPermissionsGranted }) => {
     notification: false,
   });
 
-  // Check permissions status
   const checkPermissions = async () => {
     const locationStatus = await checkLocationPermission();
     const notificationStatus = await checkNotificationPermission();
@@ -35,21 +34,17 @@ const GlobalPermissionModal = ({ visible, onClose, onPermissionsGranted }) => {
       notification: notificationStatus,
     });
 
-    // If both permissions are granted, close modal
     if (locationStatus && notificationStatus) {
       if (onPermissionsGranted) onPermissionsGranted();
       setTimeout(() => onClose(), 500);
     }
   };
-
-  // Check permissions when modal becomes visible
   useEffect(() => {
     if (visible) {
       checkPermissions();
     }
   }, [visible]);
 
-  // Listen for app state changes (when user returns from settings)
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active' && visible) {
@@ -60,7 +55,6 @@ const GlobalPermissionModal = ({ visible, onClose, onPermissionsGranted }) => {
     return () => subscription.remove();
   }, [visible]);
 
-  // Animation
   useEffect(() => {
     if (visible) {
       Animated.spring(slideAnim, {
@@ -97,7 +91,6 @@ const GlobalPermissionModal = ({ visible, onClose, onPermissionsGranted }) => {
     outputRange: [600, 0],
   });
 
-  // Don't show modal if both permissions are granted
   if (permissions.location && permissions.notification && visible) {
     return null;
   }
@@ -128,7 +121,6 @@ const GlobalPermissionModal = ({ visible, onClose, onPermissionsGranted }) => {
             Please allow the following permissions to continue
           </Text>
 
-          {/* Location Permission - Show only if not granted */}
           {!permissions.location && (
             <View style={styles.permissionItem}>
               <View style={styles.permissionIcon}>
@@ -152,7 +144,6 @@ const GlobalPermissionModal = ({ visible, onClose, onPermissionsGranted }) => {
             </View>
           )}
 
-          {/* Notification Permission - Show only if not granted */}
           {!permissions.notification && (
             <View style={styles.permissionItem}>
               <View style={styles.permissionIcon}>

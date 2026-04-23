@@ -30,20 +30,16 @@ export default function SuccessModal({ visible, orderDetails, onClose }) {
 
           <ScrollView showsVerticalScrollIndicator={false} style={styles.detailsScroll} bounces={false}>
 
-            {/* Customer */}
             <Section title="Customer">
               <Row label="Name"  value={orderDetails.customerName} />
               <Row label="Phone" value={orderDetails.phoneNumber} />
             </Section>
 
-            {/* Seat */}
             <Section title="Seat">
               <Row label="Audi" value={`Audi ${orderDetails.audi}`} />
               {orderDetails.row  && <Row label="Row"  value={`Row ${orderDetails.row}`} />}
               <Row label="Seat" value={`Seat ${orderDetails.seat}`} />
             </Section>
-
-            {/* Items */}
             <Section title="Order Items">
               {orderDetails.items?.map((item, idx) => (
                 <View key={idx} style={styles.orderItem}>
@@ -60,12 +56,11 @@ export default function SuccessModal({ visible, orderDetails, onClose }) {
                     <View style={styles.orderItemRight}>
                       <Text style={styles.orderItemQty}>×{item.quantity}</Text>
                       <Text style={styles.orderItemPrice}>
-                        ₹{Math.round(item.price * item.quantity)}
+                        ₹{item.price * item.quantity}
                       </Text>
                     </View>
                   </View>
 
-                  {/* Combo inner breakdown */}
                   {item.itemType === 'combo' && item.comboItems?.length > 0 && (
                     <View style={styles.comboBreakdown}>
                       {item.comboItems.map((ci, ciIdx) => (
@@ -86,12 +81,12 @@ export default function SuccessModal({ visible, orderDetails, onClose }) {
             {/* Payment */}
             <Section title="Payment" last>
               <Row label="Method"   value={orderDetails.paymentMethod?.toUpperCase()} />
-              <Row label="Subtotal" value={`₹${Math.round(orderDetails.subtotal)}`} />
-              <Row label="GST (5%)" value={`₹${Math.round(orderDetails.tax)}`} />
+              <Row label="Subtotal" value={`₹${orderDetails.subtotal}`} />
+              <Row label="GST (5%)" value={`₹${orderDetails.tax}`} />
               <View style={styles.totalSeparator} />
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalValue}>₹{Math.round(orderDetails.total)}</Text>
+                <Text style={styles.totalValue}>₹{orderDetails.total}</Text>
               </View>
             </Section>
 
@@ -105,8 +100,6 @@ export default function SuccessModal({ visible, orderDetails, onClose }) {
     </Modal>
   );
 }
-
-// ─── Small helpers ────────────────────────────────────────────────────────────
 
 function Section({ title, children, last }) {
   return (
@@ -125,8 +118,6 @@ function Row({ label, value }) {
     </View>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
@@ -159,7 +150,6 @@ const styles = StyleSheet.create({
   },
   detailsScroll: { maxHeight: '68%' },
 
-  // Section
   section: {
     paddingBottom: nzVertical(12),
     marginBottom: nzVertical(12),
@@ -215,7 +205,6 @@ const styles = StyleSheet.create({
   orderItemQty: { fontSize: rs(12), color: PRIMARY, fontWeight: '600' },
   orderItemPrice: { fontSize: rs(13), fontWeight: '500', color: TEXT_SECONDARY },
 
-  // Combo inner items
   comboBreakdown: {
     marginTop: nzVertical(4),
     paddingLeft: nz(8),
@@ -236,7 +225,6 @@ const styles = StyleSheet.create({
   },
   comboBreakdownQty: { fontSize: rs(11), color: TEXT_LIGHT },
 
-  // Total
   totalSeparator: {
     height: 1,
     backgroundColor: BORDER_COLOR,
@@ -250,7 +238,6 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: rs(15), fontWeight: '700', color: TEXT_PRIMARY },
   totalValue: { fontSize: rs(17), fontWeight: '700', color: PRIMARY },
 
-  // Done button
   doneBtn: {
     backgroundColor: PRIMARY,
     borderRadius: nz(12),

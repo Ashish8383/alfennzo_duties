@@ -8,7 +8,6 @@ export const checkLocationPermission = async () => {
     const { status } = await Location.getForegroundPermissionsAsync();
     return status === 'granted';
   } catch (error) {
-    console.error('Location permission check error:', error);
     return false;
   }
 };
@@ -18,7 +17,6 @@ export const checkNotificationPermission = async () => {
     const { status } = await Notifications.getPermissionsAsync();
     return status === 'granted';
   } catch (error) {
-    console.error('Notification permission check error:', error);
     return false;
   }
 };
@@ -28,7 +26,6 @@ export const checkDeviceLocationEnabled = async () => {
     const enabled = await Location.hasServicesEnabledAsync();
     return enabled;
   } catch (error) {
-    console.error('Check device location error:', error);
     return false;
   }
 };
@@ -38,7 +35,6 @@ export const requestLocationPermission = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     return status === 'granted';
   } catch (error) {
-    console.error('Location permission request error:', error);
     return false;
   }
 };
@@ -55,7 +51,6 @@ export const requestNotificationPermission = async () => {
     });
     return status === 'granted';
   } catch (error) {
-    console.error('Notification permission request error:', error);
     return false;
   }
 };

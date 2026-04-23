@@ -3,7 +3,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import colors from '../../utils/colors';
 import { nz, nzVertical, rs } from '../../utils/responsive';
 import DefaultImage from './DefaultImage';
-import QuantityControl from './QuantityControl'; // ✅ IMPORT
+import QuantityControl from './QuantityControl';
 import VegDot from './VegDot';
 
 const PRIMARY = colors.primary;
@@ -41,7 +41,6 @@ export default function MenuItem({
         <DefaultImage size={nz(70)} />
       )}
 
-      {/* Info */}
       <View style={styles.info}>
         <View style={styles.topRow}>
           <VegDot isVeg={item.isVeg} />
@@ -50,16 +49,15 @@ export default function MenuItem({
           </Text>
         </View>
 
-        <Text style={styles.price}>₹{Math.round(displayPrice)}</Text>
+        <Text style={styles.price}>₹{displayPrice}</Text>
       </View>
 
-      {/* ✅ RIGHT SIDE */}
       <View style={styles.action}>
         {quantity === 0 ? (
           <TouchableOpacity
             style={styles.addBtn}
             onPress={(e) => {
-              e.stopPropagation(); // IMPORTANT
+              e.stopPropagation(); 
               onAdd();
             }}
           >

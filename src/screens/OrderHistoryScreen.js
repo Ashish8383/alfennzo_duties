@@ -1,11 +1,11 @@
-// screens/OrderHistoryScreen.js
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { memo, useCallback, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   FlatList,
   Platform,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,15 +13,13 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useFocusEffect } from '@react-navigation/native';
 import useOrderHistoryStore from '../stores/orderStore';
 import colors from '../utils/colors';
 import { isTablet, nz, nzVertical, rs } from '../utils/responsive';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-// ─── Date helpers ─────────────────────────────────────────────────────────────
-/** Format ISO date string → "28 Jul, 12:38 PM" */
 function fmtDateTime(iso) {
   if (!iso) return '—';
   const d    = new Date(iso);
@@ -34,7 +32,6 @@ function fmtDateTime(iso) {
   return `${day} ${mon}, ${h}:${m} ${ampm}`;
 }
 
-/** Format seconds → "4h 12m" or "32m 14s" */
 function fmtSeconds(sec) {
   if (!sec) return '—';
   const h = Math.floor(sec / 3600);
@@ -43,7 +40,6 @@ function fmtSeconds(sec) {
   return `${m}m ${Math.floor(sec % 60)}s`;
 }
 
-// ─── Shimmer Hook ─────────────────────────────────────────────────────────────
 function useShimmer() {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -60,7 +56,6 @@ function useShimmer() {
   return opacity;
 }
 
-// ─── Skeleton Block ───────────────────────────────────────────────────────────
 const SkeletonBlock = memo(({ width, height, borderRadius = nz(6), style }) => {
   const opacity = useShimmer();
   return (
@@ -74,10 +69,8 @@ const SkeletonBlock = memo(({ width, height, borderRadius = nz(6), style }) => {
   );
 });
 
-// ─── Skeleton Card ────────────────────────────────────────────────────────────
 const SkeletonCard = memo(() => (
   <View style={styles.card}>
-    {/* Header row */}
     <View style={[styles.cardHeader, { paddingBottom: nzVertical(12) }]}>
       <View style={{ flex: 1, gap: nzVertical(6) }}>
         <SkeletonBlock width="45%" height={nz(14)} />
@@ -88,7 +81,6 @@ const SkeletonCard = memo(() => (
 
     <View style={styles.cardDivider} />
 
-    {/* Meta row */}
     <View style={[styles.metaRow, { paddingVertical: nzVertical(14) }]}>
       <View style={{ flex: 1, gap: nzVertical(6) }}>
         <SkeletonBlock width="40%" height={nz(10)} />
@@ -100,21 +92,18 @@ const SkeletonCard = memo(() => (
       </View>
     </View>
 
-    {/* Footer chip */}
     <View style={[styles.moreDetailsFooter, { backgroundColor: '#ECECEC' }]}>
       <SkeletonBlock width="35%" height={nz(12)} />
     </View>
   </View>
 ));
 
-// ─── Skeleton List ────────────────────────────────────────────────────────────
 const SkeletonList = memo(() => (
   <View style={{ gap: nzVertical(12) }}>
     {[0, 1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
   </View>
 ));
 
-// ─── Analytics Banner ─────────────────────────────────────────────────────────
 const AnalyticsBanner = memo(({ analytics }) => {
   if (!analytics) return null;
   return (
@@ -136,7 +125,6 @@ const AnalyticsBanner = memo(({ analytics }) => {
   );
 });
 
-// ─── Veg Dot ──────────────────────────────────────────────────────────────────
 const VegDot = memo(({ isVeg }) => {
   const c = isVeg ? '#2ECC40' : '#FF3B30';
   return (
@@ -146,8 +134,6 @@ const VegDot = memo(({ isVeg }) => {
   );
 });
 
-// ─── History Order Card ───────────────────────────────────────────────────────
-// Using local Animated ref for expand animation instead of useState re-renders
 const HistoryCard = memo(({ order }) => {
   const expandAnim  = useRef(new Animated.Value(0)).current;
   const isExpanded  = useRef(false);
@@ -164,7 +150,6 @@ const HistoryCard = memo(({ order }) => {
 
   const chevron = expandAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
-  // Map API fields
   const seat        = order.seatNo || order.tableNo || '—';
   const customer    = order.fullname || order.customer || 'Customer';
   const restName    = order.restaurantName || order.restaurant?.name || '—';
@@ -175,7 +160,6 @@ const HistoryCard = memo(({ order }) => {
 
   return (
     <View style={styles.card}>
-      {/* Header */}
       <View style={styles.cardHeader}>
         <View style={{ flex: 1, marginRight: nz(10) }}>
           <Text style={styles.cardSeat} numberOfLines={1}>{seat}</Text>
@@ -188,7 +172,6 @@ const HistoryCard = memo(({ order }) => {
 
       <View style={styles.cardDivider} />
 
-      {/* Restaurant + Customer */}
       <View style={styles.metaRow}>
         <View style={styles.metaBlock}>
           <Text style={styles.metaLabel}>Restaurant</Text>
@@ -208,7 +191,6 @@ const HistoryCard = memo(({ order }) => {
         </View>
       </View>
 
-      {/* Expanded items — maxHeight collapses to 0 so content is truly hidden */}
       <Animated.View style={{
         overflow: 'hidden',
         opacity: expandAnim,
@@ -271,7 +253,6 @@ const HistoryCard = memo(({ order }) => {
   );
 });
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
 const EmptyState = memo(() => (
   <View style={styles.emptyWrap}>
     <Ionicons name="receipt-outline" size={nz(52)} color="#D0D0D0" />
@@ -279,7 +260,6 @@ const EmptyState = memo(() => (
   </View>
 ));
 
-// ─── Load More Footer ─────────────────────────────────────────────────────────
 const LoadMoreFooter = memo(({ loading, page, totalPages, onPress }) => {
   if (page >= totalPages) return <View style={{ height: nzVertical(8) }} />;
   return (
@@ -301,7 +281,6 @@ const LoadMoreFooter = memo(({ loading, page, totalPages, onPress }) => {
   );
 });
 
-// ─── Error Banner ─────────────────────────────────────────────────────────────
 const ErrorBanner = memo(({ error, onRetry }) => {
   if (!error) return null;
   return (
@@ -315,11 +294,9 @@ const ErrorBanner = memo(({ error, onRetry }) => {
   );
 });
 
-// ─── Static separator & key extractor ────────────────────────────────────────
 const Separator = () => <View style={{ height: nzVertical(12) }} />;
 const keyExtractor = (item) => item._id || item.id;
 
-// ─── ORDER HISTORY SCREEN ─────────────────────────────────────────────────────
 export default function OrderHistoryScreen() {
   const {
     completedOrders,
@@ -335,13 +312,24 @@ export default function OrderHistoryScreen() {
 
   const insets = useSafeAreaInsets();
   const TAB_BAR_HEIGHT = nzVertical(72) + (insets.bottom > 0 ? insets.bottom : nzVertical(12));
+  
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
+  useFocusEffect(
+  useCallback(() => {
     fetchAllOrders();
-  }, []);
+  }, [])
+);
 
   const renderCard = useCallback(({ item }) => <HistoryCard order={item} />, []);
+  
   const handleRetry = useCallback(() => fetchAllOrders(), [fetchAllOrders]);
+  
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchAllOrders();
+    setRefreshing(false);
+  }, [fetchAllOrders]);
 
   const listFooter = (
     <LoadMoreFooter
@@ -357,17 +345,28 @@ export default function OrderHistoryScreen() {
       <StatusBar style="dark" translucent={false} backgroundColor={colors.white} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
 
-        {/* ── Header ── */}
         <View style={styles.headerSection}>
-          <Text style={styles.headerTitle}>Order History</Text>
+          <View style={styles.headerTitleRow}>
+            <Text style={styles.headerTitle}>Order History</Text>
+            <TouchableOpacity
+              style={styles.refreshButton}
+              onPress={handleRefresh}
+              activeOpacity={0.7}
+              disabled={completedLoading}
+            >
+              <Ionicons 
+                name="refresh" 
+                size={nz(22)} 
+                color={colors.primary} 
+              />
+            </TouchableOpacity>
+          </View>
           <AnalyticsBanner analytics={analytics} />
           <ErrorBanner error={error} onRetry={handleRetry} />
         </View>
 
-        {/* ── Body ── */}
         <View style={styles.grayBody}>
           {completedLoading ? (
-            // Skeleton shown only on first load
             <FlatList
               data={SKELETON_DATA}
               keyExtractor={i => i}
@@ -394,6 +393,17 @@ export default function OrderHistoryScreen() {
               updateCellsBatchingPeriod={50}
               ListEmptyComponent={<EmptyState />}
               ListFooterComponent={listFooter}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={colors.primary}
+                  colors={[colors.primary]} 
+                  progressBackgroundColor={colors.white}
+                  title="Pull to refresh"
+                  titleColor={colors.textLight}
+                />
+              }
             />
           )}
         </View>
@@ -402,14 +412,10 @@ export default function OrderHistoryScreen() {
   );
 }
 
-// Stable reference array for skeleton list — avoids re-creation on renders
 const SKELETON_DATA = ['s0', 's1', 's2', 's3', 's4'];
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.white },
-
-  // Header
   headerSection: {
     backgroundColor: colors.white,
     paddingHorizontal: nz(20),
@@ -418,16 +424,26 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: nzVertical(12),
+    position: 'relative',
+  },
   headerTitle: {
     fontSize: rs(isTablet ? 22 : 18),
     fontWeight: '700',
     color: colors.black,
     textAlign: 'center',
-    marginBottom: nzVertical(12),
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'System',
   },
+  refreshButton: {
+    position: 'absolute',
+    right: 0,
+    padding: nz(6),
+  },
 
-  // Analytics banner
   analyticsBanner: {
     flexDirection: 'row',
     backgroundColor: colors.primary + '0D',
@@ -441,7 +457,6 @@ const styles = StyleSheet.create({
   analyticLabel:  { fontSize: rs(10), color: colors.textLight, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
   analyticDivider:{ width: 1, backgroundColor: colors.primary + '30' },
 
-  // Error
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -457,15 +472,11 @@ const styles = StyleSheet.create({
   errorText:  { flex: 1, fontSize: rs(12), color: '#D32F2F' },
   retryText:  { fontSize: rs(12), color: colors.primary, fontWeight: '700' },
 
-  // Body
   grayBody:    { flex: 1, backgroundColor: '#EBEBEB', paddingTop: nzVertical(14), paddingHorizontal: nz(14) },
   listContent: { paddingTop: nzVertical(4), paddingHorizontal: nz(2) },
 
-  // Load more
   loadMoreBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: nz(6), marginTop: nzVertical(12), marginBottom: nzVertical(4), paddingVertical: nzVertical(12), borderRadius: nz(12), backgroundColor: colors.primary + '10', borderWidth: 1, borderColor: colors.primary + '30' },
   loadMoreText: { fontSize: rs(13), fontWeight: '600', color: colors.primary },
-
-  // Card
   card:        { backgroundColor: colors.white, borderRadius: nz(14), overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 8, elevation: 3 },
   cardHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: nz(16), paddingTop: nzVertical(14), paddingBottom: nzVertical(12) },
   cardSeat:    { fontSize: rs(14), fontWeight: '700', color: colors.black, marginBottom: nzVertical(2) },
@@ -504,7 +515,6 @@ const styles = StyleSheet.create({
   moreDetailsFooter: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: '#C9E8E0', paddingVertical: nzVertical(12), gap: nz(6) },
   moreDetailsText:   { fontSize: rs(13), color: colors.text, fontWeight: '500' },
 
-  // Empty
   emptyWrap: { alignItems: 'center', paddingTop: nzVertical(60), gap: nzVertical(12) },
   emptyText: { fontSize: rs(14), color: '#B0B0B0' },
 });

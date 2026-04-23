@@ -74,7 +74,7 @@ const ComboCard = ({ combo, quantity, onAdd, onIncrease, onDecrease, onPress }) 
           </View>
           <Text style={styles.comboName} numberOfLines={1}>{combo.name}</Text>
           <View style={styles.priceContainer}>
-            <Text style={styles.comboPrice}>₹{Math.round(displayPrice)}</Text>
+            <Text style={styles.comboPrice}>₹{displayPrice}</Text>
             {combo.isDiscountedByRestraurant && combo.discountinPercentageByRestraurant > 0 && (
               <Text style={styles.originalPrice}>₹{combo.price}</Text>
             )}

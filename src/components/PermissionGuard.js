@@ -34,8 +34,6 @@ export const PermissionGuard = ({ children, requiredPermissions = ['location', '
         setRequestedPermissions(prev => [...prev, 'notification']);
       }
     }
-    
-    // Recheck permissions
     await checkPermissions();
   };
 

@@ -24,21 +24,18 @@ export default function App() {
   const [initialCheckDone, setInitialCheckDone] = useState(false);
 
   const isCheckingRef = useRef(false);
-  const permissionsOkRef = useRef(false); // ✅ once granted, never re-prompt
+  const permissionsOkRef = useRef(false); 
 
-  // ── One-time setup ────────────────────────────────────────────────────────
   useEffect(() => {
     setupNotificationChannel();
     checkAndShowModal();
   }, []);
 
-  // ── Only re-check on foreground IF permissions were previously denied ─────
-  // If they were already granted, we never bother the user again.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (
         nextState === 'active' &&
-        !permissionsOkRef.current &&   // ✅ skip if already granted
+        !permissionsOkRef.current &&   
         !isCheckingRef.current
       ) {
         checkAndShowModal();
@@ -55,7 +52,7 @@ export default function App() {
       const granted = await requestNotificationPermissions();
 
       if (granted) {
-        permissionsOkRef.current = true;   // ✅ lock — never show modal again
+        permissionsOkRef.current = true;   
         setShowPermissionModal(false);
       } else {
         setShowPermissionModal(true);
@@ -66,13 +63,11 @@ export default function App() {
     }
   };
 
-  // ── FCM listeners ─────────────────────────────────────────────────────────
   useEffect(() => {
     const cleanup = setupInAppNotificationListeners();
     return cleanup;
   }, []);
 
-  // ── Badge management ──────────────────────────────────────────────────────
   useEffect(() => {
     const cleanup = initBadgeManagement();
     return cleanup;

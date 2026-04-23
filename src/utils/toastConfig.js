@@ -5,8 +5,8 @@ export const toastConfig = {
     <BaseToast
       {...props}
       style={{
-        borderLeftColor: '#0B735F',   // 🔥 dark green
-        backgroundColor: '#2ECCB0',   // 🔥 light green
+        borderLeftColor: '#0B735F',   
+        backgroundColor: '#2ECCB0', 
         height: 70,
         borderRadius: 10,
         marginHorizontal: 10,
@@ -15,11 +15,11 @@ export const toastConfig = {
       text1Style={{
         fontSize: 16,
         fontWeight: '700',
-        color: '#fff',                // ✅ white text
+        color: '#fff',           
       }}
       text2Style={{
         fontSize: 14,
-        color: '#fff',                // ✅ white text
+        color: '#fff',              
       }}
     />
   ),
@@ -28,8 +28,8 @@ export const toastConfig = {
     <ErrorToast
       {...props}
       style={{
-        borderLeftColor: '#FF3B30',   // 🔥 dark red
-        backgroundColor: '#FF6B6B',   // 🔥 light red
+        borderLeftColor: '#FF3B30',   
+        backgroundColor: '#FF6B6B',  
         height: 70,
         borderRadius: 10,
         marginHorizontal: 10,
@@ -50,8 +50,8 @@ export const toastConfig = {
     <BaseToast
       {...props}
       style={{
-        borderLeftColor: '#007AFF',   // 🔥 dark blue
-        backgroundColor: '#4DA3FF',   // 🔥 light blue
+        borderLeftColor: '#007AFF', 
+        backgroundColor: '#4DA3FF',  
         height: 70,
         borderRadius: 10,
         marginHorizontal: 10,

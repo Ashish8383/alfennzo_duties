@@ -2,13 +2,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    AppState,
-    Linking,
-    Modal,
-    StyleSheet,
-    Text,
-    View
+  Animated,
+  AppState,
+  Linking,
+  Modal,
+  StyleSheet,
+  Text,
+  View
 } from 'react-native';
 import { checkDeviceLocationEnabled } from '../utils/Permissions';
 import colors from '../utils/colors';
@@ -100,7 +100,7 @@ const GlobalLocationTracker = ({ children }) => {
               </View>
             </View>
 
-            <Text style={styles.title}>Location Services Disabled</Text>
+            <Text style={styles.title}>Location Disabled</Text>
             <Text style={styles.description}>
               Your device location is turned off. Please enable location to continue tracking deliveries and verify your presence at restaurants.
             </Text>

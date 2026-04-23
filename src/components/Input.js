@@ -25,10 +25,7 @@ import { isTablet, nz, nzVertical, rs } from '../utils/responsive';
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
-
       <View style={[styles.inputContainer, error && styles.inputError]}>
-
-        {/* LEFT ICON */}
         {leftIcon && (
           <View style={styles.leftIcon}>
             {leftIcon}
@@ -46,8 +43,6 @@ import { isTablet, nz, nzVertical, rs } from '../utils/responsive';
           multiline={multiline}
           numberOfLines={multiline ? numberOfLines : 1}
         />
-
-        {/* RIGHT ICON */}
         {rightIcon && (
           <TouchableOpacity onPress={onRightIconPress} style={styles.rightIcon}>
             {rightIcon}

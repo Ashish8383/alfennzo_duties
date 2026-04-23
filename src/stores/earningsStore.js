@@ -20,7 +20,6 @@ const useEarningsStore = create((set, get) => ({
 
   selectedMonth: new Date().toISOString().slice(0, 7),
 
-  // ─────────────────────────────────────────────────────────────────────────
   fetchMonthlyStats: async (month) => {
     set({ statsLoading: true, statsError: null });
     try {
@@ -51,8 +50,8 @@ const useEarningsStore = create((set, get) => ({
       if (body?.status) {
         const { earnings, pagination } = body.data;
         set({
-          earningsHistory: earnings,       // ✅ ALWAYS replace — page-based nav
-          earningsPagination: pagination,  // server echoes back the limit we sent
+          earningsHistory: earnings,       
+          earningsPagination: pagination,  
           earningsLoading: false,
           selectedMonth: currentMonth,
         });
@@ -78,7 +77,7 @@ const useEarningsStore = create((set, get) => ({
       if (body?.status) {
         const { payouts, pagination } = body.data;
         set({
-          payoutHistory: payouts,          // ✅ ALWAYS replace — page-based nav
+          payoutHistory: payouts,          
           payoutPagination: pagination,
           payoutLoading: false,
         });
@@ -92,7 +91,7 @@ const useEarningsStore = create((set, get) => ({
     }
   },
 
-  // ── changeMonth also accepts earnLimit so it respects EARN_LIMIT constant ──
+
   changeMonth: async (month, earnLimit = 10) => {
     set({ selectedMonth: month, earningsHistory: [], earningsPagination: { currentPage: 1 } });
     await Promise.all([
@@ -101,9 +100,6 @@ const useEarningsStore = create((set, get) => ({
     ]);
   },
 
-  // ── initializeEarnings accepts limit overrides from the screen ────────────
-  // This way EARN_LIMIT and PAY_LIMIT constants defined in the screen propagate
-  // all the way through and the pagination.limit stored in state stays correct.
   initializeEarnings: async (month, earnLimit = 10, payLimit = 5) => {
     const target = month || get().selectedMonth;
     set({

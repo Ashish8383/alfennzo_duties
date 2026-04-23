@@ -320,7 +320,6 @@ const skStyles = StyleSheet.create({
     },
 });
 
-// ─── Animated Summary Card ────────────────────────────────────────────────────
 function SummaryCard({ icon, label, value, color, delay }) {
     const anim = useRef(new Animated.Value(0)).current;
 
@@ -351,7 +350,6 @@ function SummaryCard({ icon, label, value, color, delay }) {
     );
 }
 
-// ─── Calendar Day Cell ────────────────────────────────────────────────────────
 function DayCell({ day, status, isToday, onPress }) {
     const isPast = status === 'present' || status === 'absent';
     const isPresent = status === 'present';
@@ -523,7 +521,6 @@ function ShiftDayGroup({ date, shifts, index }) {
     );
 }
 
-// ─── Month Picker ─────────────────────────────────────────────────────────────
 function MonthPicker({ year, month, onPrev, onNext }) {
     const now = new Date();
     const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
@@ -548,7 +545,6 @@ function MonthPicker({ year, month, onPrev, onNext }) {
     );
 }
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ShiftHistoryScreen({ navigation }) {
     const insets = useSafeAreaInsets();
     const { fetchDutyHistory, dutyHistory, dutyHistoryLoading, dutyHistoryError } = useUIStore();

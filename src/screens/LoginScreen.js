@@ -32,14 +32,12 @@ export default function LoginScreen({ navigation }) {
   const { login, verifyOTP, resendOTP, isLoading, error, clearError, tempEmail: storeTempEmail } = useAuthStore();
   const toast = useToast();
 
-  // Clear error when inputs change
   useEffect(() => {
     if (error) {
       clearError();
     }
   }, [email, password]);
 
-  // Check if OTP modal should be shown
   useEffect(() => {
     if (storeTempEmail) {
       setTempEmail(storeTempEmail);
@@ -73,9 +71,7 @@ export default function LoginScreen({ navigation }) {
     }
 
     const result = await login(email, password);
-    console.log('Login result:', result);
     if (result?.requiresOTP) {
-      // OTP modal will show automatically via useEffect
       toast.showSuccess('OTP Sent', result.message || 'Verification code sent to your email');
     } else if (result?.success) {
       toast.showSuccess('Welcome!', `Hello ${email.split('@')[0]}`);
@@ -91,7 +87,6 @@ export default function LoginScreen({ navigation }) {
       toast.showSuccess('Success', 'Login successful!');
       setShowOTPModal(false);
       setTempEmail('');
-      // Navigation will be handled by root navigator
     } else {
       toast.showError('Verification Failed', error || 'Invalid OTP');
     }
@@ -117,15 +112,11 @@ export default function LoginScreen({ navigation }) {
     navigation.navigate('ForgotPassword');
   };
 
-  // --- NEW: Function to open URLs ---
   const openLink = (url) => {
     Linking.openURL(url).catch((err) => {
-      console.error('Failed to open URL:', err);
       toast.showError('Error', 'Could not open the link');
     });
   };
-  // ---------------------------------
-
   return (
     <>
       <StatusBar style="dark" translucent={false} backgroundColor={colors.white} />
@@ -140,7 +131,6 @@ export default function LoginScreen({ navigation }) {
             bounces={false}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Top Image - waiter.jpeg */}
             <View style={styles.imageContainer}>
               <Image
                 source={require('../assets/images/waiter.jpeg')}
@@ -189,7 +179,6 @@ export default function LoginScreen({ navigation }) {
               onRightIconPress={() => setShowPassword(!showPassword)}
             />
 
-            {/* Forgot Password Row - REMOVED Remember Me */}
             <View style={styles.rowContainer}>
               <TouchableOpacity
                 onPress={handleForgotPassword}
@@ -199,7 +188,6 @@ export default function LoginScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            {/* Login Button */}
             <TouchableOpacity
               style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
               onPress={handleLogin}
@@ -293,10 +281,9 @@ const styles = StyleSheet.create({
     marginTop: nzVertical(4),
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
-  // --- UPDATED STYLES: Removed checkbox styles, kept only row and forgot text ---
   rowContainer: {
     flexDirection: 'row',
-    justifyContent: 'flex-end', // Aligns the Forgot Password to the right
+    justifyContent: 'flex-end', 
     alignItems: 'center',
     marginTop: nzVertical(4),
     marginBottom: nzVertical(28),
@@ -307,7 +294,6 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
   },
-  // --------------------------------------------------------------------------
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -15,8 +15,6 @@ import { navigate } from './navigationRef';
 import { showInAppNotification } from './notificationService';
 
 let soundInstance = null;
-
-// ─── Permissions ──────────────────────────────────────────────────────────────
 export const requestNotificationPermissions = async () => {
   try {
     const messaging  = getMessaging();
@@ -34,12 +32,9 @@ export const requestNotificationPermissions = async () => {
 
     return firebaseGranted && status === 'granted';
   } catch (error) {
-    console.error('[Permissions] Error:', error);
     return false;
   }
 };
-
-// ─── Android channels — must match backend channelId values exactly ───────────
 export const setupNotificationChannel = async () => {
   if (Platform.OS !== 'android') return;
   try {
@@ -72,26 +67,19 @@ export const setupNotificationChannel = async () => {
         lightColor:       '#FF0000',
       }),
     ]);
-
-    console.log('✅ Notification channels ready');
   } catch (error) {
-    console.error('[Channel] Error:', error);
   }
 };
 
-// ─── FCM Token ────────────────────────────────────────────────────────────────
 export const getFCMToken = async () => {
   try {
     const token = await getToken(getMessaging());
-    console.log('[FCM] Token:', token);
     return token;
   } catch (error) {
-    console.error('[FCM] Token error:', error);
     return null;
   }
 };
 
-// ─── Foreground sound (expo-av) ───────────────────────────────────────────────
 export const playCustomSound = async () => {
   try {
     if (soundInstance) {
@@ -113,21 +101,17 @@ export const playCustomSound = async () => {
       if (status.didJustFinish) { sound.unloadAsync(); soundInstance = null; }
     });
   } catch (error) {
-    console.error('[Sound] Error:', error);
   }
 };
 
-// ─── Badge ────────────────────────────────────────────────────────────────────
 export const resetBadgeCount = async () => {
   try {
     await Notifications.setBadgeCountAsync(0);
     await Notifications.dismissAllNotificationsAsync();
   } catch (error) {
-    console.error('[Badge] Error:', error);
   }
 };
 
-// ─── Routing ──────────────────────────────────────────────────────────────────
 const ONGOING_TAB_EVENTS = new Set([
   'ORDER_READY_FOR_DELIVERY',
   'ORDER_DELIVERED_CONFIRMED',
@@ -145,40 +129,27 @@ const parseRemoteMessage = (remoteMessage) => {
   return { title, body, type, tab, eventType };
 };
 
-// ─── Listeners — call once in App.js ─────────────────────────────────────────
 export const setupInAppNotificationListeners = () => {
   const messaging = getMessaging();
-
-  // 1. Foreground: show in-app banner + play sound
-  //    Do NOT schedule a local notification — avoids duplicate
   const unsubscribeFCM = onMessage(messaging, async (remoteMessage) => {
-    console.log('[FCM] 🔔 Foreground');
     const payload = parseRemoteMessage(remoteMessage);
     showInAppNotification(payload);
     await playCustomSound();
   });
 
-  // 2. Background tap → navigate to correct tab
   onNotificationOpenedApp(messaging, (remoteMessage) => {
     if (!remoteMessage) return;
-    console.log('[FCM] 👆 Background tap');
     const { tab } = parseRemoteMessage(remoteMessage);
     navigate('Home', { initialTab: tab });
     resetBadgeCount();
   });
 
-  // 3. Killed state tap → navigate after mount
   getInitialNotification(messaging).then((remoteMessage) => {
     if (!remoteMessage) return;
-    console.log('[FCM] 🚀 Killed state tap');
     const { tab } = parseRemoteMessage(remoteMessage);
     setTimeout(() => { navigate('Home', { initialTab: tab }); resetBadgeCount(); }, 500);
   });
-
-  // 4. Token refresh
   const unsubscribeToken = onTokenRefresh(messaging, (newToken) => {
-    console.log('[FCM] 🔄 Token refreshed:', newToken);
-    // TODO: api.updateFcmToken(newToken)
   });
 
   return () => {
@@ -187,7 +158,6 @@ export const setupInAppNotificationListeners = () => {
   };
 };
 
-// ─── Badge management ─────────────────────────────────────────────────────────
 let appStateSubscription = null;
 
 export const initBadgeManagement = () => {

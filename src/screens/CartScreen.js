@@ -39,46 +39,25 @@ const TEXT3 = '#999999';
 const BORDER = '#E8E8E8';
 const RED = '#E53935';
 
-// ─── Skeleton Components ──────────────────────────────────────────────────────
 const SkeletonBox = ({ width, height, borderRadius = nz(6), style }) => {
   const shimmer = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(shimmer, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true
-        }),
-        Animated.timing(shimmer, {
-          toValue: 0,
-          duration: 1200,
-          useNativeDriver: true
-        }),
+        Animated.timing(shimmer, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(shimmer, { toValue: 0, duration: 1200, useNativeDriver: true }),
       ])
     );
     loop.start();
     return () => loop.stop();
   }, []);
 
-  const opacity = shimmer.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.7]
-  });
+  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] });
 
   return (
     <Animated.View
-      style={[
-        {
-          width,
-          height,
-          borderRadius,
-          backgroundColor: '#E0E0E0',
-          opacity
-        },
-        style
-      ]}
+      style={[{ width, height, borderRadius, backgroundColor: '#E0E0E0', opacity }, style]}
     />
   );
 };
@@ -119,14 +98,8 @@ const SkeletonSection = ({ showHeader = true, itemCount = 3 }) => (
 );
 
 const CartScreenSkeleton = () => (
-  <ScrollView
-    showsVerticalScrollIndicator={false}
-    contentContainerStyle={skStyles.scrollContent}
-  >
-    {/* Items section */}
+  <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={skStyles.scrollContent}>
     <SkeletonSection itemCount={3} />
-
-    {/* Bill details section */}
     <SkeletonSection showHeader={false} itemCount={1}>
       <View style={skStyles.billSkeleton}>
         <View style={skStyles.billRow}>
@@ -144,8 +117,6 @@ const CartScreenSkeleton = () => (
         </View>
       </View>
     </SkeletonSection>
-
-    {/* Customer details section */}
     <SkeletonSection showHeader={false} itemCount={1}>
       <View style={skStyles.inputSkeleton}>
         <SkeletonBox width="100%" height={nzVertical(50)} borderRadius={nz(10)} />
@@ -154,13 +125,9 @@ const CartScreenSkeleton = () => (
         <SkeletonBox width="100%" height={nzVertical(50)} borderRadius={nz(10)} />
       </View>
     </SkeletonSection>
-
-    {/* Seat selection section */}
     <SkeletonSection showHeader={false} itemCount={1}>
       <SkeletonBox width="100%" height={nzVertical(80)} borderRadius={nz(12)} />
     </SkeletonSection>
-
-    {/* Payment section */}
     <SkeletonSection showHeader={false} itemCount={1}>
       <View style={skStyles.paymentSkeleton}>
         {[1, 2, 3].map((_, index) => (
@@ -172,85 +139,31 @@ const CartScreenSkeleton = () => (
 );
 
 const skStyles = StyleSheet.create({
-  scrollContent: {
-    paddingHorizontal: nz(14),
-    paddingTop: nzVertical(14),
-    paddingBottom: nzVertical(100),
-  },
-  section: {
-    backgroundColor: WHITE,
-    borderRadius: nz(16),
-    marginBottom: nzVertical(12),
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-  sectionHeader: {
-    paddingHorizontal: nz(14),
-    paddingVertical: nzVertical(12),
-    backgroundColor: '#FAFAFA',
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-  },
-  sectionBody: {
-    padding: nz(14),
-  },
-  card: {
-    paddingVertical: nzVertical(8),
-    marginBottom: nzVertical(8),
-  },
-  mainRow: {
-    flexDirection: 'row',
-    gap: nz(12),
-  },
-  rightBlock: {
-    flex: 1,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: nz(5),
-    marginBottom: nzVertical(6),
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: nzVertical(4),
-  },
-  billSkeleton: {
-    gap: nzVertical(8),
-  },
-  billRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: nzVertical(5),
-  },
-  divider: {
-    height: 1,
-    backgroundColor: BORDER,
-    marginVertical: nzVertical(8),
-  },
-  inputSkeleton: {
-    marginBottom: nzVertical(10),
-  },
-  paymentSkeleton: {
-    flexDirection: 'row',
-    gap: nz(10),
-    justifyContent: 'space-between',
-  },
+  scrollContent: { paddingHorizontal: nz(14), paddingTop: nzVertical(14), paddingBottom: nzVertical(100) },
+  section: { backgroundColor: WHITE, borderRadius: nz(16), marginBottom: nzVertical(12), overflow: 'hidden', borderWidth: 1, borderColor: BORDER },
+  sectionHeader: { paddingHorizontal: nz(14), paddingVertical: nzVertical(12), backgroundColor: '#FAFAFA', borderBottomWidth: 1, borderBottomColor: BORDER },
+  sectionBody: { padding: nz(14) },
+  card: { paddingVertical: nzVertical(8), marginBottom: nzVertical(8) },
+  mainRow: { flexDirection: 'row', gap: nz(12) },
+  rightBlock: { flex: 1 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: nz(5), marginBottom: nzVertical(6) },
+  priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: nzVertical(4) },
+  billSkeleton: { gap: nzVertical(8) },
+  billRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: nzVertical(5) },
+  divider: { height: 1, backgroundColor: BORDER, marginVertical: nzVertical(8) },
+  inputSkeleton: { marginBottom: nzVertical(10) },
+  paymentSkeleton: { flexDirection: 'row', gap: nz(10), justifyContent: 'space-between' },
 });
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
 const resolveName = it =>
   it?.name || it?.itemName || it?.combofoodName || it?.comboData?.combofoodName || 'Item';
+
 const resolvePrice = it =>
   it.isDiscountedByRestraurant && it.discountinPercentageByRestraurant > 0
     ? it.price * (1 - it.discountinPercentageByRestraurant / 100)
     : (it.price ?? 0);
-const resolveImage = it => it?.image || it?.categoryImage || it?.comboData?.image || null;
 
-// ─── Item image with fallback ─────────────────────────────────────────────────
+const resolveImage = it => it?.image || it?.categoryImage || it?.comboData?.image || null;
 function ItemImage({ uri, size = nz(72) }) {
   const [err, setErr] = useState(false);
   if (!err && uri) {
@@ -270,7 +183,6 @@ function ItemImage({ uri, size = nz(72) }) {
   );
 }
 
-// ─── Qty stepper ──────────────────────────────────────────────────────────────
 function Stepper({ qty, onInc, onDec, onRemove }) {
   return (
     <View style={st.row}>
@@ -301,7 +213,6 @@ const st = StyleSheet.create({
   qty: { fontSize: rs(16), fontWeight: '700', color: TEXT1, minWidth: nz(22), textAlign: 'center' },
 });
 
-// ─── Cart item card ───────────────────────────────────────────────────────────
 function CartCard({ item, onInc, onDec, onRemove }) {
   const [open, setOpen] = useState(false);
   const name = resolveName(item);
@@ -329,7 +240,7 @@ function CartCard({ item, onInc, onDec, onRemove }) {
           ) : null}
           <View style={cc.priceRow}>
             <View>
-              <Text style={cc.price}>₹{Math.round(price)}</Text>
+              <Text style={cc.price}>₹{price}</Text>
               {item.isDiscountedByRestraurant && item.discountinPercentageByRestraurant > 0 && (
                 <Text style={cc.strike}>₹{item.price}</Text>
               )}
@@ -381,13 +292,13 @@ const cc = StyleSheet.create({
   kidMeta: { fontSize: rs(11), color: TEXT3 },
 });
 
-// ─── Seat Picker Bottom Sheet ─────────────────────────────────────────────────
 function SeatPickerSheet({ visible, seatingData, onConfirm, onClose, insets }) {
   const slideX = useRef(new Animated.Value(0)).current;
   const [step, setStep] = useState(0);
   const [audi, setAudi] = useState(null);
   const [row, setRow] = useState(null);
   const [seat, setSeat] = useState(null);
+  const [categoryInfo, setCategoryInfo] = useState(null);
 
   const screens = useMemo(() => (seatingData?.screens || []).filter(s => s.audiNo), [seatingData]);
   const lines = useMemo(() => screens.find(s => s.audiNo === audi)?.lines || [], [screens, audi]);
@@ -403,24 +314,41 @@ function SeatPickerSheet({ visible, seatingData, onConfirm, onClose, insets }) {
     setStep(nextStep);
   };
 
-  const pickAudi = a => { setAudi(a); setRow(null); setSeat(null); slideTo(1); };
-  const pickRow = r => { setRow(r); setSeat(null); slideTo(2); };
+  const pickAudi = a => { setAudi(a); setRow(null); setSeat(null); setCategoryInfo(null); slideTo(1); };
+  
+  const pickRow = r => { 
+    setRow(r); 
+    setSeat(null);
+    const selectedLine = lines.find(l => l.line === r);
+    setCategoryInfo(selectedLine?.seatCategoryDetails || null);
+    slideTo(2); 
+  };
+  
   const pickSeat = s => setSeat(s === seat ? null : s);
 
   const goBack = () => {
-    if (step === 1) { setAudi(null); slideTo(0); }
-    if (step === 2) { setRow(null); setSeat(null); slideTo(1); }
+    if (step === 1) { setAudi(null); setCategoryInfo(null); slideTo(0); }
+    if (step === 2) { setRow(null); setSeat(null); setCategoryInfo(null); slideTo(1); }
   };
 
   const reset = () => {
-    setStep(0); setAudi(null); setRow(null); setSeat(null);
+    setStep(0); setAudi(null); setRow(null); setSeat(null); setCategoryInfo(null);
     slideX.setValue(0);
   };
 
   const handleClose = () => { reset(); onClose(); };
 
   const confirm = () => {
-    if (audi && seat) { onConfirm({ audi, row, seat }); handleClose(); }
+    if (audi && seat) { 
+      onConfirm({ 
+        audi, 
+        row, 
+        seat, 
+        categoryId: categoryInfo?.categoryId,
+        categoryName: categoryInfo?.categoryName
+      }); 
+      handleClose(); 
+    }
   };
 
   const STEPS = ['Audi', 'Row', 'Seat'];
@@ -430,23 +358,24 @@ function SeatPickerSheet({ visible, seatingData, onConfirm, onClose, insets }) {
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={handleClose}>
       <View style={sh.overlay}>
         <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={handleClose} />
-
         <View style={[sh.sheet, { paddingBottom: pb }]}>
           <View style={sh.pill} />
-
           <View style={sh.header}>
             {step > 0
               ? <TouchableOpacity onPress={goBack} style={sh.navBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="arrow-back" size={nz(20)} color={TEXT1} />
-              </TouchableOpacity>
+                  <Ionicons name="arrow-back" size={nz(20)} color={TEXT1} />
+                </TouchableOpacity>
               : <View style={sh.navBtn} />}
             <View style={{ flex: 1 }}>
               <Text style={sh.headerTitle} numberOfLines={1}>
-                {step === 0 ? 'Select Audi'
-                  : step === 1 ? `Audi ${audi}  ·  Select Row`
-                    : `Audi ${audi}  ·  Row ${row}`}
+                {step === 0 ? 'Select Audi' : step === 1 ? `Audi ${audi}  ·  Select Row` : `Audi ${audi}  ·  Row ${row}`}
               </Text>
-              {step === 2 && <Text style={sh.headerSub}>Select a seat number</Text>}
+              {step === 2 && categoryInfo?.categoryName && (
+                <Text style={sh.headerSub}>Category: {categoryInfo.categoryName}</Text>
+              )}
+              {step === 2 && !categoryInfo?.categoryName && (
+                <Text style={sh.headerSub}>Select a seat number</Text>
+              )}
             </View>
             <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={nz(22)} color={TEXT2} />
@@ -476,23 +405,22 @@ function SeatPickerSheet({ visible, seatingData, onConfirm, onClose, insets }) {
 
           <View style={sh.clip}>
             <Animated.View style={[sh.track, { transform: [{ translateX: slideX }] }]}>
-
               {/* Panel 0 — Audi */}
               <View style={sh.panel}>
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={sh.grid} bounces={false}>
                   {screens.length === 0
                     ? <Text style={sh.none}>No audis available</Text>
                     : screens.map(sc => (
-                      <TouchableOpacity
-                        key={sc.audiNo}
-                        style={[sh.gridBtn, audi === sc.audiNo && sh.gridBtnActive]}
-                        onPress={() => pickAudi(sc.audiNo)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={sh.gridLbl}>Audi</Text>
-                        <Text style={[sh.gridNum, audi === sc.audiNo && sh.gridNumActive]}>{sc.audiNo}</Text>
-                      </TouchableOpacity>
-                    ))}
+                        <TouchableOpacity
+                          key={sc.audiNo}
+                          style={[sh.gridBtn, audi === sc.audiNo && sh.gridBtnActive]}
+                          onPress={() => pickAudi(sc.audiNo)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={sh.gridLbl}>Audi</Text>
+                          <Text style={[sh.gridNum, audi === sc.audiNo && sh.gridNumActive]}>{sc.audiNo}</Text>
+                        </TouchableOpacity>
+                      ))}
                 </ScrollView>
               </View>
 
@@ -508,6 +436,11 @@ function SeatPickerSheet({ visible, seatingData, onConfirm, onClose, insets }) {
                     >
                       <Text style={sh.gridLbl}>Row</Text>
                       <Text style={[sh.gridNum, row === l.line && sh.gridNumActive]}>{l.line}</Text>
+                      {l.seatCategoryDetails?.categoryName && (
+                        <Text style={sh.categoryLabel} numberOfLines={1}>
+                          {l.seatCategoryDetails.categoryName}
+                        </Text>
+                      )}
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -528,7 +461,6 @@ function SeatPickerSheet({ visible, seatingData, onConfirm, onClose, insets }) {
                   ))}
                 </ScrollView>
               </View>
-
             </Animated.View>
           </View>
 
@@ -541,9 +473,7 @@ function SeatPickerSheet({ visible, seatingData, onConfirm, onClose, insets }) {
             >
               <Ionicons name="checkmark-circle-outline" size={nz(20)} color={WHITE} />
               <Text style={sh.confirmTxt} numberOfLines={1}>
-                {seat
-                  ? `Confirm — Audi ${audi}  ·  Row ${row}  ·  Seat ${seat}`
-                  : 'Tap a seat to select'}
+                {seat ? `Confirm — ${categoryInfo?.categoryName ? categoryInfo.categoryName + ' ' : ''}Audi ${audi} /${row} ${seat}` : 'Tap a seat to select'}
               </Text>
             </TouchableOpacity>
           )}
@@ -562,20 +492,12 @@ const seatBtnW = (SW - PANEL_PAD * 2 - GRID_GAP * (SEAT_COLS - 1)) / SEAT_COLS;
 
 const sh = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.52)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: WHITE,
-    borderTopLeftRadius: nz(28), borderTopRightRadius: nz(28),
-    paddingTop: nzVertical(8),
-    maxHeight: SH * 0.85,
-    overflow: 'hidden',
-  },
+  sheet: { backgroundColor: WHITE, borderTopLeftRadius: nz(28), borderTopRightRadius: nz(28), paddingTop: nzVertical(8), maxHeight: SH * 0.85, overflow: 'hidden' },
   pill: { width: nz(42), height: nz(4), borderRadius: nz(2), backgroundColor: '#DDD', alignSelf: 'center', marginBottom: nzVertical(14) },
-
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: nz(16), marginBottom: nzVertical(14), gap: nz(10) },
   navBtn: { width: nz(34), height: nz(34), justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: rs(15), fontWeight: '700', color: TEXT1 },
-  headerSub: { fontSize: rs(11), color: TEXT3, marginTop: nzVertical(2) },
-
+  headerSub: { fontSize: rs(11), color: PRIMARY, marginTop: nzVertical(2), fontWeight: '600' },
   crumb: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: nz(16), marginBottom: nzVertical(16) },
   crumbItem: { flexDirection: 'row', alignItems: 'center', gap: nz(5) },
   dot: { width: nz(24), height: nz(24), borderRadius: nz(12), justifyContent: 'center', alignItems: 'center' },
@@ -588,77 +510,103 @@ const sh = StyleSheet.create({
   crumbLblDone: { color: '#2E7D32', fontWeight: '600' },
   crumbLine: { width: nz(20), height: nz(2), backgroundColor: '#E0E0E0', marginHorizontal: nz(4) },
   crumbLineDone: { backgroundColor: '#2E7D32' },
-
   clip: { overflow: 'hidden', height: SH * 0.38 },
   track: { flexDirection: 'row', width: SW * 3, height: '100%' },
   panel: { width: SW, paddingHorizontal: PANEL_PAD },
-
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP, paddingBottom: nzVertical(8) },
   gridBtn: { width: gridBtnW, paddingVertical: nzVertical(13), borderRadius: nz(12), backgroundColor: '#F5F5F5', alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
   gridBtnActive: { backgroundColor: PRIMARY_LIGHT, borderColor: PRIMARY },
   gridLbl: { fontSize: rs(9), color: TEXT3, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: nzVertical(3) },
   gridNum: { fontSize: rs(17), fontWeight: '800', color: TEXT2 },
   gridNumActive: { color: PRIMARY },
+  categoryLabel: { fontSize: rs(9), color: PRIMARY, fontWeight: '600', marginTop: nzVertical(2), textAlign: 'center' },
   none: { fontSize: rs(13), color: TEXT3, textAlign: 'center', paddingVertical: nzVertical(20), width: '100%' },
-
   seatGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP, paddingBottom: nzVertical(8) },
   seatBtn: { width: seatBtnW, paddingVertical: nzVertical(12), borderRadius: nz(10), backgroundColor: '#F5F5F5', alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
   seatBtnActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
   seatNum: { fontSize: rs(13), fontWeight: '700', color: TEXT2 },
   seatNumActive: { color: WHITE },
-
   confirmBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: nz(8), margin: nz(16), backgroundColor: PRIMARY, borderRadius: nz(14), paddingVertical: nzVertical(14), shadowColor: PRIMARY, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   confirmOff: { backgroundColor: '#C0C0C0', shadowOpacity: 0 },
-  confirmTxt: { fontSize: rs(14), fontWeight: '700', color: WHITE },
+  confirmTxt: { fontSize: rs(14), fontWeight: '700', color: WHITE, flexShrink: 1 },
 });
 
-// ─── Success sheet ─────────────────────────────────────────────────────────────
 function SuccessSheet({ order, onDone, insets }) {
   const slideY = useRef(new Animated.Value(SH)).current;
   useState(() => {
     Animated.timing(slideY, { toValue: 0, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   });
   const pb = Math.max(insets.bottom, nzVertical(16));
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <View style={sx.backdrop} />
       <Animated.View style={[sx.sheet, { paddingBottom: pb, transform: [{ translateY: slideY }] }]}>
         <View style={sx.pill} />
-        <View style={sx.iconWrap}><Ionicons name="checkmark-circle" size={nz(58)} color={PRIMARY} /></View>
+        <View style={sx.iconWrap}>
+          <Ionicons name="checkmark-circle" size={nz(58)} color={PRIMARY} />
+        </View>
         <Text style={sx.title}>Order Placed!</Text>
         <Text style={sx.sub}>{order.orderId}</Text>
+
         <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: SH * 0.5 }} bounces={false}>
           <View style={sx.block}>
             {[
               ['Customer', order.customerName || '—'],
               ['Phone', order.phoneNumber],
-              ['Seat', [order.audi && `Audi ${order.audi}`, order.row && `Row ${order.row}`, order.seat && `Seat ${order.seat}`].filter(Boolean).join(' · ')],
+              ['Seat', order.categoryName ? `${order.categoryName} Audi ${order.audi} · Row ${order.row} · Seat ${order.seat}` : [order.audi && `Audi ${order.audi}`, order.row && `Row ${order.row}`, order.seat && `Seat ${order.seat}`].filter(Boolean).join(' · ')],
               ['Payment', (order.paymentMethod || '').toUpperCase()],
             ].map(([k, v]) => (
-              <View key={k} style={sx.row}><Text style={sx.lbl}>{k}</Text><Text style={sx.val}>{v}</Text></View>
+              <View key={k} style={sx.row}>
+                <Text style={sx.lbl}>{k}</Text>
+                <Text style={sx.val}>{v}</Text>
+              </View>
             ))}
             <View style={sx.line} />
-            <View style={sx.row}><Text style={sx.lbl}>Subtotal</Text><Text style={sx.val}>₹{order.subtotal}</Text></View>
-            <View style={sx.row}><Text style={sx.lbl}>GST (5%)</Text><Text style={sx.val}>₹{order.tax}</Text></View>
+            <View style={sx.row}>
+              <Text style={sx.lbl}>Subtotal</Text>
+              <Text style={sx.val}>₹{order.subtotal?.toFixed(2)}</Text>
+            </View>
+            {order.convenienceFee > 0 && (
+              <>
+                <View style={sx.row}>
+                  <Text style={sx.lbl}>Base Amount</Text>
+                  <Text style={sx.val}>₹{order.platformFeeAmount?.toFixed(2)}</Text>
+                </View>
+                <View style={sx.row}>
+                  <Text style={sx.lbl}>GST (Govt. Taxes)</Text>
+                  <Text style={sx.val}>₹{order.platformFeeTax?.toFixed(2)}</Text>
+                </View>
+                <View style={sx.row}>
+                  <Text style={[sx.lbl, { color: PRIMARY, fontWeight: '600' }]}>Total Convenience Fee</Text>
+                  <Text style={[sx.val, { color: PRIMARY }]}>₹{order.convenienceFee?.toFixed(2)}</Text>
+                </View>
+              </>
+            )}
             <View style={[sx.row, { paddingTop: nzVertical(4) }]}>
-              <Text style={sx.totalLbl}>Total</Text><Text style={sx.totalVal}>₹{order.total}</Text>
+              <Text style={sx.totalLbl}>Total</Text>
+              <Text style={sx.totalVal}>₹{order.total?.toFixed(2)}</Text>
             </View>
           </View>
+
           <Text style={sx.itemsHead}>Items ({order.items?.length})</Text>
           {order.items?.map((it, i) => (
             <View key={i} style={sx.item}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: nz(8) }}>
                 <Text style={sx.itemName}>{it.name}</Text>
-                <Text style={sx.itemMeta}>×{it.quantity}  ₹{Math.round(it.price * it.quantity)}</Text>
+                <Text style={sx.itemMeta}>×{it.quantity}  ₹{it.price * it.quantity}</Text>
               </View>
               {it.comboItems?.length > 0 && (
                 <View style={sx.kids}>
-                  {it.comboItems.map((c, j) => <Text key={j} style={sx.kid}>· {c.foodName}  ×{c.quantity}</Text>)}
+                  {it.comboItems.map((c, j) => (
+                    <Text key={j} style={sx.kid}>· {c.foodName}  ×{c.quantity}</Text>
+                  ))}
                 </View>
               )}
             </View>
           ))}
         </ScrollView>
+
         <TouchableOpacity style={sx.doneBtn} onPress={onDone} activeOpacity={0.85}>
           <Text style={sx.doneTxt}>Done</Text>
         </TouchableOpacity>
@@ -666,6 +614,7 @@ function SuccessSheet({ order, onDone, insets }) {
     </View>
   );
 }
+
 const sx = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.52)' },
   sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: WHITE, borderTopLeftRadius: nz(28), borderTopRightRadius: nz(28), paddingHorizontal: nz(20), paddingTop: nzVertical(8), maxHeight: SH * 0.88, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 20, elevation: 20 },
@@ -689,13 +638,13 @@ const sx = StyleSheet.create({
   doneBtn: { marginTop: nzVertical(14), backgroundColor: PRIMARY, borderRadius: nz(14), paddingVertical: nzVertical(15), alignItems: 'center', shadowColor: PRIMARY, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   doneTxt: { fontSize: rs(16), fontWeight: '700', color: WHITE },
 });
-
-// ─── Section wrapper ──────────────────────────────────────────────────────────
 function Section({ icon, title, badge, badgeDanger, children }) {
   return (
     <View style={sc.wrap}>
       <View style={sc.hdr}>
-        <View style={sc.iconBox}><Ionicons name={icon} size={nz(16)} color={PRIMARY} /></View>
+        <View style={sc.iconBox}>
+          <Ionicons name={icon} size={nz(16)} color={PRIMARY} />
+        </View>
         <Text style={sc.title}>{title}</Text>
         {badge && (
           <View style={[sc.badge, badgeDanger && sc.badgeRed]}>
@@ -707,6 +656,7 @@ function Section({ icon, title, badge, badgeDanger, children }) {
     </View>
   );
 }
+
 const sc = StyleSheet.create({
   wrap: { backgroundColor: WHITE, borderRadius: nz(16), marginBottom: nzVertical(12), overflow: 'hidden', borderWidth: 1, borderColor: BORDER },
   hdr: { flexDirection: 'row', alignItems: 'center', gap: nz(8), paddingHorizontal: nz(14), paddingVertical: nzVertical(12), backgroundColor: '#FAFAFA', borderBottomWidth: 1, borderBottomColor: BORDER },
@@ -717,8 +667,26 @@ const sc = StyleSheet.create({
   badgeTxt: { fontSize: rs(10), fontWeight: '700', color: WHITE },
   body: { padding: nz(14) },
 });
-
-// ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
+function BillRow({ label, value, bold, accent }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: nzVertical(5) }}>
+      <Text style={{
+        fontSize: bold ? rs(15) : rs(13),
+        fontWeight: bold ? '700' : '500',
+        color: bold ? TEXT1 : accent ? PRIMARY : TEXT2,
+      }}>
+        {label}
+      </Text>
+      <Text style={{
+        fontSize: bold ? rs(16) : rs(13),
+        fontWeight: bold ? '700' : '600',
+        color: bold ? PRIMARY : accent ? PRIMARY : TEXT1,
+      }}>
+        {value}
+      </Text>
+    </View>
+  );
+}
 export default function CartScreen({ route }) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -734,68 +702,60 @@ export default function CartScreen({ route }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading cart data
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-
+    const timer = setTimeout(() => setIsLoading(false), 1000);
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    if (typeof onCartChange === 'function') {
-      onCartChange(cart);
-    }
+    if (typeof onCartChange === 'function') onCartChange(cart);
   }, [cart]);
 
-  // Keyboard listeners
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
-        setKeyboardVisible(true);
-        setKeyboardHeight(e.endCoordinates.height);
-      }
+      (e) => { setKeyboardVisible(true); setKeyboardHeight(e.endCoordinates.height); }
     );
     const keyboardDidHideListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        setKeyboardVisible(false);
-        setKeyboardHeight(0);
-      }
+      () => { setKeyboardVisible(false); setKeyboardHeight(0); }
     );
-
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
+    return () => { keyboardDidShowListener.remove(); keyboardDidHideListener.remove(); };
   }, []);
 
   const [custName, setCustName] = useState('');
   const [phone, setPhone] = useState('');
   const [phoneErr, setPhoneErr] = useState('');
   const [seatErr, setSeatErr] = useState('');
-
   const [seatInfo, setSeatInfo] = useState(null);
   const [showSeatPicker, setShowSeatPicker] = useState(false);
-
-  const [payMethod, setPayMethod] = useState('cash');
+  const [payMethod, setPayMethod] = useState('');
   const [note, setNote] = useState('');
   const [order, setOrder] = useState(null);
+  const [payMethodErr, setPayMethodErr] = useState('');
 
-  const { seatingData, createPOSOrder, orderCreating } = useUIStore();
-
+  const { seatingData, createPOSOrder, orderCreating, restaurantInfo } = useUIStore();
   const cartItems = useMemo(() => Object.values(cart).filter(it => it && it.quantity > 0), [cart]);
-  const subtotal = useMemo(() => cartItems.reduce((s, it) => s + resolvePrice(it) * it.quantity, 0), [cartItems]);
-  const tax = subtotal * 0.05;
-  const total = subtotal + tax;
 
-  const inc = useCallback(id => setCart(p => p[id] ? { ...p, [id]: { ...p[id], quantity: p[id].quantity + 1 } } : p), []);
+  const subtotal = useMemo(
+    () => cartItems.reduce((s, it) => s + resolvePrice(it) * it.quantity, 0),
+    [cartItems]
+  );
+
+  const platformFeePercent = restaurantInfo?.plateformFee ?? 0;
+  const platformFeeAmount = subtotal * (platformFeePercent / 100);
+  const platformFeeTax = platformFeeAmount * 0.18;           
+  const convenienceFee = platformFeeAmount + platformFeeTax; 
+  const total = subtotal + convenienceFee;
+
+  const inc = useCallback(id =>
+    setCart(p => p[id] ? { ...p, [id]: { ...p[id], quantity: p[id].quantity + 1 } } : p), []);
+
   const dec = useCallback(id => setCart(p => {
     if (!p[id]) return p;
     if (p[id].quantity <= 1) { const { [id]: _, ...r } = p; return r; }
     return { ...p, [id]: { ...p[id], quantity: p[id].quantity - 1 } };
   }), []);
+
   const remove = useCallback(id => setCart(p => { const { [id]: _, ...r } = p; return r; }), []);
 
   const validateAndPlace = () => {
@@ -818,17 +778,31 @@ export default function CartScreen({ route }) {
       setSeatErr('');
     }
 
+    if (!payMethod) {
+      setPayMethodErr('Please select a payment method');
+      valid = false;
+    } else {
+      setPayMethodErr('');
+    }
+
     if (!valid) return;
     doPlaceOrder();
   };
 
   const doPlaceOrder = async () => {
-    const seatNo = seatInfo?.audi && seatInfo?.row && seatInfo?.seat
-      ? `Aud ${seatInfo.audi} / ${seatInfo.row}-${seatInfo.seat}`
+    const seatWithCategory = seatInfo?.audi && seatInfo?.row && seatInfo?.seat
+      ? `${seatInfo.categoryName ? seatInfo.categoryName + ' ' : ''}Audi ${seatInfo.audi}/${seatInfo.row}${seatInfo.seat}`
       : '';
 
     const orderPayload = {
-      seatNo,
+      seatNo: seatWithCategory,
+      seatDetails: {
+        audiNo: seatInfo?.audi,
+        row: seatInfo?.row,
+        seatNo: seatInfo?.seat,
+        categoryId: seatInfo?.categoryId || null,
+        categoryName: seatInfo?.categoryName || null
+      },
       customerName: custName.trim() || '',
       Customerphone: phone.trim(),
       orderItems: cartItems.map(item => {
@@ -837,14 +811,13 @@ export default function CartScreen({ route }) {
           _id: item.id || item._id,
           foodName: resolveName(item),
           foodtype: item.isVeg ? 'Veg' : 'Non-Veg',
-          amount: Math.round(resolvePrice(item)),
+          amount: resolvePrice(item),
           GST: 0,
           quantity: item.quantity,
           size: 'full',
           customization: [],
           combo_items: [],
         };
-
         if (isCombo && item.comboData?.ComboItems) {
           baseItem.combo_items = item.comboData.ComboItems.map(comboItem => ({
             foodName: comboItem.foodName,
@@ -853,12 +826,16 @@ export default function CartScreen({ route }) {
             quantity: comboItem.quantity || 1,
           }));
         }
-
         return baseItem;
       }),
       paymentMethod: payMethod.toUpperCase(),
+      platformFeePercent: platformFeePercent,
+      platformFeeAmount: parseFloat(platformFeeAmount.toFixed(2)),
+      platformFeeTax: parseFloat(platformFeeTax.toFixed(2)),
+      convenienceFee: parseFloat(convenienceFee.toFixed(2)),
+      subtotal: parseFloat(subtotal.toFixed(2)),
+      totalAmount: parseFloat(total.toFixed(2)),
     };
-
 
     const result = await createPOSOrder(orderPayload);
 
@@ -871,6 +848,8 @@ export default function CartScreen({ route }) {
         audi: seatInfo.audi,
         row: seatInfo.row,
         seat: seatInfo.seat,
+        categoryId: seatInfo.categoryId,
+        categoryName: seatInfo.categoryName,
         paymentMethod: payMethod,
         note: note.trim() || null,
         items: cartItems.map(it => ({
@@ -882,9 +861,12 @@ export default function CartScreen({ route }) {
           isVeg: it.isVeg,
           comboItems: it.comboData?.ComboItems || [],
         })),
-        subtotal: Math.round(subtotal),
-        tax: Math.round(tax),
-        total: Math.round(total),
+        subtotal,
+        platformFeePercent,
+        platformFeeAmount,
+        platformFeeTax,
+        convenienceFee,
+        total,
         apiResponse: result.data,
       };
       setOrder(od);
@@ -894,14 +876,15 @@ export default function CartScreen({ route }) {
   };
 
   const handleDone = () => {
-  if (typeof onCartChange === 'function') onCartChange({});
-  navigateToHomeOngoingTab();
-};
+    if (typeof onCartChange === 'function') onCartChange({});
+    navigateToHomeOngoingTab();
+  };
 
   const canPlace =
     cartItems.length > 0 &&
     /^\d{10}$/.test(phone.trim()) &&
     Boolean(seatInfo?.seat) &&
+    Boolean(payMethod) &&
     !orderCreating;
 
   const PAY_METHODS = [
@@ -910,10 +893,8 @@ export default function CartScreen({ route }) {
     { id: 'upi', label: 'UPI', icon: 'qr-code-outline' },
   ];
 
-  // Calculate dynamic footer padding when keyboard is visible
   const footerPadding = isKeyboardVisible ? keyboardHeight - insets.bottom : footerPB;
 
-  // Loading state with skeleton
   if (isLoading) {
     return (
       <>
@@ -929,7 +910,6 @@ export default function CartScreen({ route }) {
     );
   }
 
-  // Empty cart
   if (cartItems.length === 0 && !order) {
     return (
       <>
@@ -959,7 +939,7 @@ export default function CartScreen({ route }) {
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-          enabled={!isKeyboardVisible} // Disable when keyboard is already visible to prevent jumping
+          enabled={!isKeyboardVisible}
         >
           <ScrollView
             style={{ flex: 1 }}
@@ -967,12 +947,14 @@ export default function CartScreen({ route }) {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            scrollEnabled={!isKeyboardVisible} // Prevent scroll while keyboard is open
+            scrollEnabled={!isKeyboardVisible}
           >
+            {/* Order Items */}
             <Section icon="receipt-outline" title="Your Order">
               {cartItems.map(it => (
                 <CartCard
-                  key={it.id} item={it}
+                  key={it.id}
+                  item={it}
                   onInc={() => inc(it.id)}
                   onDec={() => dec(it.id)}
                   onRemove={() => remove(it.id)}
@@ -981,12 +963,29 @@ export default function CartScreen({ route }) {
             </Section>
 
             <Section icon="calculator-outline" title="Bill Details">
-              <BillRow label="Subtotal" value={`₹${Math.round(subtotal)}`} />
-              <BillRow label="GST (5%)" value={`₹${Math.round(tax)}`} />
-              <View style={{ height: 1, backgroundColor: BORDER, marginVertical: nzVertical(8) }} />
-              <BillRow label="Total" value={`₹${Math.round(total)}`} bold />
-            </Section>
+              <BillRow label="Subtotal" value={`₹${subtotal.toFixed(2)}`} />
 
+              {platformFeePercent > 0 && (
+                <>
+                  <BillRow
+                    label={`Base Amount`}
+                    value={`₹${platformFeeAmount.toFixed(2)}`}
+                  />
+                  <BillRow
+                    label="GST (Govt. Taxes)"
+                    value={`₹${platformFeeTax.toFixed(2)}`}
+                  />
+                  <BillRow
+                    label="Total Convenience Fee"
+                    value={`₹${convenienceFee.toFixed(2)}`}
+                    accent
+                  />
+                </>
+              )}
+
+              <View style={{ height: 1, backgroundColor: BORDER, marginVertical: nzVertical(8) }} />
+              <BillRow label="Total" value={`₹${total.toFixed(2)}`} bold />
+            </Section>
             <Section icon="person-outline" title="Customer Details">
               <InputField
                 icon="person-outline"
@@ -1004,7 +1003,6 @@ export default function CartScreen({ route }) {
                 error={phoneErr}
               />
             </Section>
-
             <Section
               icon="location-outline"
               title="Seat Selection"
@@ -1019,11 +1017,15 @@ export default function CartScreen({ route }) {
                     </View>
                     <View>
                       <Text style={scr.seatCardTitle}>
+                        {seatInfo.categoryName && (
+                          <Text style={{ color: PRIMARY, fontWeight: '600' }}>
+                            {seatInfo.categoryName}{' '}
+                          </Text>
+                        )}
                         Audi {seatInfo.audi}
-                        {seatInfo.row ? `  ·  Row ${seatInfo.row}` : ''}
-                        {seatInfo.seat ? `  ·  Seat ${seatInfo.seat}` : ''}
+                        {seatInfo.row ? ` /${seatInfo.row}` : ''}
+                        {seatInfo.seat ? ` ${seatInfo.seat}` : ''}
                       </Text>
-                      <Text style={scr.seatCardSub}>Tap Change to pick a different seat</Text>
                     </View>
                   </View>
                   <TouchableOpacity style={scr.changeBtn} onPress={() => setShowSeatPicker(true)} activeOpacity={0.7}>
@@ -1037,15 +1039,12 @@ export default function CartScreen({ route }) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={scr.seatPromptTitle}>Select Your Seat</Text>
-                    <Text style={scr.seatPromptSub}>Audi  →  Row  →  Seat number</Text>
+                    <Text style={scr.seatPromptSub}>Audi  →  Row  →  Seat</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={nz(20)} color={TEXT3} />
                 </TouchableOpacity>
               )}
-
-              {seatErr ? (
-                <Text style={scr.seatErrTxt}>{seatErr}</Text>
-              ) : null}
+              {seatErr ? <Text style={scr.seatErrTxt}>{seatErr}</Text> : null}
             </Section>
 
             <Section icon="wallet-outline" title="Payment Method">
@@ -1054,7 +1053,7 @@ export default function CartScreen({ route }) {
                   <TouchableOpacity
                     key={m.id}
                     style={[scr.payBtn, payMethod === m.id && scr.payBtnOn]}
-                    onPress={() => setPayMethod(m.id)}
+                    onPress={() => { setPayMethod(m.id); if (payMethodErr) setPayMethodErr(''); }}
                     activeOpacity={0.8}
                   >
                     <Ionicons name={m.icon} size={nz(19)} color={payMethod === m.id ? WHITE : TEXT2} />
@@ -1062,9 +1061,13 @@ export default function CartScreen({ route }) {
                   </TouchableOpacity>
                 ))}
               </View>
+              {payMethodErr ? (
+                <Text style={{ color: RED, fontSize: rs(11), marginTop: nzVertical(6) }}>{payMethodErr}</Text>
+              ) : null}
             </Section>
           </ScrollView>
 
+          {/* Footer */}
           <View style={[scr.footer, { paddingBottom: footerPadding }]}>
             {!seatInfo?.seat && cartItems.length > 0 && (
               <Text style={scr.hint}>Select a seat to continue</Text>
@@ -1076,7 +1079,7 @@ export default function CartScreen({ route }) {
               activeOpacity={0.85}
             >
               <Text style={scr.placeTxt}>
-                {orderCreating ? 'Placing Order…' : `Place Order  ·  ₹${Math.round(total)}`}
+                {orderCreating ? 'Placing Order…' : `Place Order  ·  ₹${total.toFixed(2)}`}
               </Text>
               {!orderCreating && <Ionicons name="arrow-forward-circle" size={nz(22)} color={WHITE} />}
             </TouchableOpacity>
@@ -1097,7 +1100,6 @@ export default function CartScreen({ route }) {
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
 function CartHeader({ title, onBack }) {
   return (
     <View style={scr.header}>
@@ -1133,21 +1135,13 @@ function InputField({ icon, placeholder, value, onChange, keyboard, maxLen, mult
     </View>
   );
 }
+
 const inf = StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', gap: nz(10), backgroundColor: BG, borderRadius: nz(10), borderWidth: 1.5, borderColor: BORDER, paddingHorizontal: nz(12), minHeight: nzVertical(50) },
   wrapErr: { borderColor: RED, backgroundColor: '#FFF5F5' },
   input: { flex: 1, fontSize: rs(14), color: TEXT1, paddingVertical: nzVertical(10) },
   err: { fontSize: rs(11), color: RED, marginTop: nzVertical(3), marginLeft: nz(4) },
 });
-
-function BillRow({ label, value, bold }) {
-  return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: nzVertical(5) }}>
-      <Text style={{ fontSize: bold ? rs(15) : rs(13), fontWeight: bold ? '700' : '500', color: bold ? TEXT1 : TEXT2 }}>{label}</Text>
-      <Text style={{ fontSize: bold ? rs(16) : rs(13), fontWeight: bold ? '700' : '600', color: bold ? PRIMARY : TEXT1 }}>{value}</Text>
-    </View>
-  );
-}
 
 const scr = StyleSheet.create({
   root: { flex: 1, backgroundColor: BG },
@@ -1157,18 +1151,16 @@ const scr = StyleSheet.create({
   scroll: { paddingHorizontal: nz(14), paddingTop: nzVertical(14) },
 
   seatCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: PRIMARY_PALE, borderRadius: nz(12), padding: nz(12), borderWidth: 1, borderColor: PRIMARY + '30', gap: nz(10) },
-  seatCardLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: nz(10) },
-  seatIconBox: { width: nz(38), height: nz(38), borderRadius: nz(19), backgroundColor: PRIMARY_LIGHT, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  seatCardTitle: { fontSize: rs(13), fontWeight: '700', color: TEXT1, flexShrink: 1 },
-  seatCardSub: { fontSize: rs(11), color: TEXT3, marginTop: nzVertical(2) },
+  seatCardLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: nz(5) },
+  seatIconBox: { width: nz(35), height: nz(35), borderRadius: nz(19), backgroundColor: PRIMARY_LIGHT, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  seatCardTitle: { fontSize: rs(12), fontWeight: '700', color: TEXT1, flexShrink: 1 },
   changeBtn: { backgroundColor: PRIMARY_LIGHT, borderRadius: nz(8), paddingHorizontal: nz(12), paddingVertical: nzVertical(8), borderWidth: 1, borderColor: PRIMARY + '40', flexShrink: 0 },
-  changeTxt: { fontSize: rs(12), fontWeight: '700', color: PRIMARY },
+  changeTxt: { fontSize: rs(11), fontWeight: '700', color: PRIMARY },
 
   seatPrompt: { flexDirection: 'row', alignItems: 'center', gap: nz(12), backgroundColor: PRIMARY_PALE, borderRadius: nz(12), padding: nz(14), borderWidth: 1.5, borderColor: PRIMARY + '30', borderStyle: 'dashed' },
   seatPromptIcon: { width: nz(46), height: nz(46), borderRadius: nz(23), backgroundColor: PRIMARY_LIGHT, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   seatPromptTitle: { fontSize: rs(14), fontWeight: '700', color: PRIMARY },
   seatPromptSub: { fontSize: rs(12), color: TEXT3, marginTop: nzVertical(2) },
-
   seatErrTxt: { fontSize: rs(11), color: RED, marginTop: nzVertical(6), marginLeft: nz(4) },
 
   payRow: { flexDirection: 'row', gap: nz(10) },

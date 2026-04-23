@@ -1,24 +1,43 @@
-// src/utils/soundManager.js
-// Manages the looping ordercoming.mp3 alert sound.
-// Sound plays ONLY when pending orders exist. Stops when pending = 0.
 import { Audio } from 'expo-av';
 
 let soundObject  = null;
 let isPlaying    = false;
 let isLoading    = false;
 
-// ─── Internal: configure audio session ───────────────────────────────────────
+let clickSoundObject = null;
+let clickSoundLoading = false;
+
 async function configureAudioSession() {
   await Audio.setAudioModeAsync({
     allowsRecordingIOS:         false,
     staysActiveInBackground:    true,
-    playsInSilentModeIOS:       true,   // play even on silent switch
+    playsInSilentModeIOS:       true,   
     shouldDuckAndroid:          false,
     playThroughEarpieceAndroid: false,
   });
 }
 
-// ─── Start looping sound ──────────────────────────────────────────────────────
+export async function playClickSound() {
+  if (clickSoundLoading) return;
+  try {
+    clickSoundLoading = true;
+    await configureAudioSession();
+
+    if (!clickSoundObject) {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../assets/click.mp3'),
+        { shouldPlay: false, volume: 1.0 }
+      );
+      clickSoundObject = sound;
+    }
+    await clickSoundObject.setPositionAsync(0);
+    await clickSoundObject.playAsync();
+  } catch (e) {
+  } finally {
+    clickSoundLoading = false;
+  }
+}
+
 export async function startOrderSound() {
   if (isPlaying || isLoading) return;
   isLoading = true;
@@ -39,10 +58,8 @@ export async function startOrderSound() {
       await soundObject.setIsLoopingAsync(true);
       await soundObject.playAsync();
       isPlaying = true;
-      console.log('[SoundManager] ▶ ordercoming.mp3 started (loop)');
     }
   } catch (e) {
-    console.warn('[SoundManager] startOrderSound error:', e);
     isPlaying = false;
   } finally {
     isLoading = false;
@@ -57,16 +74,12 @@ export async function stopOrderSound() {
     if (status.isPlaying) {
       await soundObject.stopAsync();
       await soundObject.setPositionAsync(0);
-      console.log('[SoundManager] ■ ordercoming.mp3 stopped');
     }
     isPlaying = false;
   } catch (e) {
-    console.warn('[SoundManager] stopOrderSound error:', e);
   }
 }
 
-// ─── Play once (for foreground FCM notifications) ────────────────────────────
-// Plays ordercoming.mp3 a single time without interrupting the loop state.
 export async function playOnce() {
   try {
     await configureAudioSession();
@@ -82,13 +95,10 @@ export async function playOnce() {
       }
     });
 
-    console.log('[SoundManager] ▶ ordercoming.mp3 played once (notification)');
   } catch (e) {
-    console.warn('[SoundManager] playOnce error:', e);
   }
 }
 
-// ─── Full cleanup (on logout / unmount) ──────────────────────────────────────
 export async function unloadOrderSound() {
   try {
     if (soundObject) {
@@ -97,9 +107,12 @@ export async function unloadOrderSound() {
       soundObject = null;
       isPlaying   = false;
       isLoading   = false;
-      console.log('[SoundManager] unloaded');
+    }
+    if (clickSoundObject) {
+      await clickSoundObject.stopAsync().catch(() => {});
+      await clickSoundObject.unloadAsync().catch(() => {});
+      clickSoundObject  = null;
     }
   } catch (e) {
-    console.warn('[SoundManager] unloadOrderSound error:', e);
   }
 }

@@ -1,4 +1,4 @@
-// src/stores/authStore.js
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import * as Location from 'expo-location';
@@ -7,15 +7,9 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import api from '../utils/api';
 import { getDeviceInfo } from '../utils/deviceinfo';
 
-const API_BASE_URL = 'https://sandbox.safeqr.in/api/v1';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
-// ─── Token helper ──────────────────────────────────────────────────────────────
-/**
- * Pull all token-related fields out of a login / OTP-verify response data object.
- * Handles both `response.data` and `response.data.data` shapes.
- */
 const extractTokenFields = (data = {}, fallbackEmail = '') => ({
-  // IDs / identity
   id:       data.id   || data._id  || data.userId,
   name:     data.fullName || data.name || fallbackEmail.split('@')[0],
   fullName: data.fullName || data.name || fallbackEmail.split('@')[0],
@@ -23,54 +17,38 @@ const extractTokenFields = (data = {}, fallbackEmail = '') => ({
   phone:    data.phone ? String(data.phone) : '',
   role:     data.role || 'waiter',
 
-  // Tokens
   accessToken:  data.accessToken  || data.token,
-  token:        data.accessToken  || data.token,   // keep alias
+  token:        data.accessToken  || data.token,   
   refreshToken: data.refreshToken || null,
 
-  // ✅ Expiry timestamps — used by api.js for proactive refresh
   accessTokenExpiresAt:  data.accessTokenExpiresAt  || null,
   refreshTokenExpiresAt: data.refreshTokenExpiresAt || null,
-
-  // Extra flags
   wasLoggedOutFromAnotherDevice: data.wasLoggedOutFromAnotherDevice ?? false,
-
-  // Spread everything else (restaurant info, duty status, etc.)
   ...data,
 });
 
-// ──────────────────────────────────────────────────────────────────────────────
 
 const useAuthStore = create(
   persist(
     (set, get) => ({
-      // ─── State ───────────────────────────────────────────────────────────
       user: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
       tempEmail: null,
 
-      // ─── Login ───────────────────────────────────────────────────────────
       login: async (email, password) => {
-        console.log('[authStore] login attempt for:', email);
         set({ isLoading: true, error: null });
         try {
           const response = await api.post('/waiter/waiterLogin', { email, password });
           const body = response.data;
-           console.log('[authStore] login response:', body);
-          // OTP flow
           if (body?.status === true && body.message?.includes('OTP')) {
             set({ tempEmail: email, isLoading: false, error: null });
             return { requiresOTP: true, email, message: body.message };
           }
-
-          // Direct token flow
           if (body?.data?.accessToken || body?.token) {
             const userData = extractTokenFields(body.data || {}, email);
             set({ user: userData, isAuthenticated: true, isLoading: false, error: null, tempEmail: null });
-
-            // Refresh full profile so all fields are present
             await get().fetchProfile();
             return { success: true };
           }
@@ -91,7 +69,6 @@ const useAuthStore = create(
         }
       },
 
-      // ─── Verify OTP (Login) ───────────────────────────────────────────────
       verifyOTP: async (otp) => {
         set({ isLoading: true, error: null });
         try {
@@ -130,7 +107,6 @@ const useAuthStore = create(
           const body = response.data;
 
           if (body?.status === true) {
-            // ✅ Extract tokens + expiry from OTP response
             const userData = extractTokenFields(body.data || {}, tempEmail);
             set({ user: userData, isAuthenticated: true, isLoading: false, tempEmail: null });
 
@@ -145,8 +121,6 @@ const useAuthStore = create(
         }
       },
 
-      // ─── Refresh Access Token ─────────────────────────────────────────────
-      // Called directly by api.js interceptor — also exposed for manual use.
       refreshAccessToken: async () => {
         const { user } = get();
         const refreshToken = user?.refreshToken;
@@ -180,19 +154,15 @@ const useAuthStore = create(
             refreshTokenExpiresAt: d.refreshTokenExpiresAt || user?.refreshTokenExpiresAt,
           };
 
-          // Merge updated tokens into store (preserves all other user fields)
           set((state) => ({ user: { ...state.user, ...tokenFields } }));
           return { success: true, accessToken: tokenFields.accessToken };
 
         } catch (error) {
-          console.warn('[authStore] refreshAccessToken failed:', error?.message);
-          // Refresh failed — session is dead
           await get().logout(true);
           return { error: 'Session expired. Please log in again.' };
         }
       },
 
-      // ─── Fetch Profile ────────────────────────────────────────────────────
       fetchProfile: async () => {
         try {
           const response = await api.get('/waiter/getProfile');
@@ -219,12 +189,10 @@ const useAuthStore = create(
           }
           return { error: response.data?.message || 'Failed to fetch profile' };
         } catch (error) {
-          console.warn('[authStore] fetchProfile error:', error?.response?.data);
           return { error: error?.response?.data?.message || 'Could not load profile' };
         }
       },
 
-      // ─── Update Profile ───────────────────────────────────────────────────
       updateUserProfile: async ({ fullName, dateOfBirth, phone }) => {
         set({ isLoading: true, error: null });
         try {
@@ -248,7 +216,6 @@ const useAuthStore = create(
         }
       },
 
-      // ─── Logout ───────────────────────────────────────────────────────────
       logout: async (force = false) => {
         try {
           const { user } = get();
@@ -270,13 +237,11 @@ const useAuthStore = create(
           if (status === 400 && message && !force) {
             return { blocked: true, message };
           }
-          // Any other error or force=true → wipe locally
         }
 
         set({ user: null, isAuthenticated: false, error: null, tempEmail: null });
       },
 
-      // ─── Duty Toggle ──────────────────────────────────────────────────────
       changeDutytoggal: async (isOnDuty) => {
         set({ isLoading: true, error: null });
         try {
@@ -288,15 +253,12 @@ const useAuthStore = create(
               coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
             }
           } catch (_) {}
-
           const payload = {
             isOnDuty,
             latitude:  coords?.latitude  ?? 0,
             longitude: coords?.longitude ?? 0,
           };
-
           const response = await api.post('/waiter/changeDutyStatus', payload);
-
           if (response.data?.status === true) {
             set((state) => ({ user: { ...state.user, isOnDuty }, isLoading: false }));
             return { success: true };
@@ -309,7 +271,6 @@ const useAuthStore = create(
         }
       },
 
-      // ─── Forgot Password — send OTP ───────────────────────────────────────
       forgotPassword: async (email) => {
         try {
           const response = await api.post('/waiter/forgetPassword', { email });
@@ -322,7 +283,6 @@ const useAuthStore = create(
         }
       },
 
-      // ─── Forgot Password — verify OTP + new password ──────────────────────
       verifyForgotOTP: async (email, otp, newPassword) => {
         try {
           const response = await api.post('/waiter/verifyForgetPasswordOTP', {
@@ -337,7 +297,6 @@ const useAuthStore = create(
         }
       },
 
-      // ─── Helpers ──────────────────────────────────────────────────────────
       clearError:    () => set({ error: null }),
       getToken:      () => get().user?.accessToken || get().user?.token || null,
       updateProfile: (data) => set((state) => ({ user: { ...state.user, ...data } })),
@@ -345,7 +304,6 @@ const useAuthStore = create(
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      // ✅ Persist expiry timestamps so api.js can read them on cold start
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,

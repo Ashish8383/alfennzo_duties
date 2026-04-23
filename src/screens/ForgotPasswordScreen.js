@@ -26,7 +26,6 @@ import colors from '../utils/colors';
 import { isTablet, nz, nzVertical, rs } from '../utils/responsive';
 import useToast from '../utils/useToast';
 
-// ─── OTP Input (react-native-confirmation-code-field) ─────────────────────────
 const OTP_LENGTH = 6;
 
 function OTPInput({ value, onChange }) {
@@ -59,7 +58,6 @@ function OTPInput({ value, onChange }) {
   );
 }
 
-// ─── Step indicator ───────────────────────────────────────────────────────────
 function StepDots({ step }) {
   return (
     <View style={styles.stepRow}>
@@ -69,8 +67,6 @@ function StepDots({ step }) {
     </View>
   );
 }
-
-// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ForgotPasswordScreen({ navigation }) {
   const [step,        setStep]        = useState(1);        // 1 = email, 2 = otp + new password
   const [email,       setEmail]       = useState('');
@@ -87,7 +83,6 @@ export default function ForgotPasswordScreen({ navigation }) {
   const { forgotPassword, verifyForgotOTP } = useAuthStore();
   const toast = useToast();
 
-  // ── Countdown timer for resend ──
   const startCooldown = useCallback(() => {
     setResendCooldown(60);
     clearInterval(cooldownRef.current);
@@ -98,8 +93,6 @@ export default function ForgotPasswordScreen({ navigation }) {
       });
     }, 1000);
   }, []);
-
-  // ── Step 1 validation ──
   const validateEmail = () => {
     const e = {};
     if (!email.trim())               e.email = 'Email is required';
@@ -108,7 +101,6 @@ export default function ForgotPasswordScreen({ navigation }) {
     return !Object.keys(e).length;
   };
 
-  // ── Step 2 validation ──
   const validateReset = () => {
     const e = {};
     if (otp.length !== 6)              e.otp = 'Enter the 6-digit OTP';
@@ -120,8 +112,6 @@ export default function ForgotPasswordScreen({ navigation }) {
     setErrors(e);
     return !Object.keys(e).length;
   };
-
-  // ── Send OTP ──
   const handleSendOTP = async () => {
     if (!validateEmail()) return;
     setIsLoading(true);
@@ -138,8 +128,6 @@ export default function ForgotPasswordScreen({ navigation }) {
       setIsLoading(false);
     }
   };
-
-  // ── Resend OTP ──
   const handleResend = async () => {
     if (resendCooldown > 0) return;
     setIsLoading(true);
@@ -157,7 +145,6 @@ export default function ForgotPasswordScreen({ navigation }) {
     }
   };
 
-  // ── Verify OTP + reset ──
   const handleReset = async () => {
     if (!validateReset()) return;
     setIsLoading(true);
@@ -202,7 +189,6 @@ export default function ForgotPasswordScreen({ navigation }) {
               />
             </View>
 
-            {/* Title */}
             <View style={styles.titleContainer}>
               <Text style={styles.title}>
                 {step === 1 ? 'Forgot Password?' : 'Reset Password'}
@@ -214,10 +200,8 @@ export default function ForgotPasswordScreen({ navigation }) {
               </Text>
             </View>
 
-            {/* Step dots */}
             <StepDots step={step} />
 
-            {/* ── STEP 1: Email ── */}
             {step === 1 && (
               <>
                 <Input
@@ -244,8 +228,6 @@ export default function ForgotPasswordScreen({ navigation }) {
                 </TouchableOpacity>
               </>
             )}
-
-            {/* ── STEP 2: OTP + New Password ── */}
             {step === 2 && (
               <>
                 {/* OTP boxes */}
@@ -255,7 +237,6 @@ export default function ForgotPasswordScreen({ navigation }) {
                   {errors.otp ? <Text style={styles.fieldError}>{errors.otp}</Text> : null}
                 </View>
 
-                {/* Resend row */}
                 <View style={styles.resendRow}>
                   <Text style={styles.resendHint}>Didn't receive the code? </Text>
                   <TouchableOpacity onPress={handleResend} disabled={resendCooldown > 0 || isLoading} activeOpacity={0.7}>
@@ -265,7 +246,6 @@ export default function ForgotPasswordScreen({ navigation }) {
                   </TouchableOpacity>
                 </View>
 
-                {/* New password */}
                 <Input
                   label="New Password"
                   value={newPassword}
@@ -278,7 +258,6 @@ export default function ForgotPasswordScreen({ navigation }) {
                   onRightIconPress={() => setShowNew(v => !v)}
                 />
 
-                {/* Confirm password */}
                 <Input
                   label="Confirm Password"
                   value={confirmPass}
@@ -304,7 +283,6 @@ export default function ForgotPasswordScreen({ navigation }) {
               </>
             )}
 
-            {/* Back to login */}
             <TouchableOpacity style={styles.backToLogin} onPress={() => navigation.replace('Login')} activeOpacity={0.7}>
               <Ionicons name="arrow-back-outline" size={nz(14)} color={colors.primary} />
               <Text style={styles.backToLoginText}>Back to Login</Text>
@@ -318,7 +296,6 @@ export default function ForgotPasswordScreen({ navigation }) {
   );
 }
 
-// ─── OTP cell styles ──────────────────────────────────────────────────────────
 const otpSt = StyleSheet.create({
   box: {
     width: nz(44),
@@ -346,8 +323,6 @@ const otpSt = StyleSheet.create({
     textAlign: 'center',
   },
 });
-
-// ─── Screen styles ────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeArea:      { flex: 1, backgroundColor: colors.white },
   flex:          { flex: 1 },
@@ -393,23 +368,19 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
 
-  // Step dots
   stepRow:        { flexDirection: 'row', gap: nz(6), marginVertical: nzVertical(16) },
   stepDot:        { width: nz(24), height: nz(4), borderRadius: nz(2), backgroundColor: '#E0E0E0' },
   stepDotActive:  { backgroundColor: colors.primary, width: nz(40) },
 
-  // OTP section
   otpSection:  { marginBottom: nzVertical(4) },
   fieldLabel:  { fontSize: rs(12), fontWeight: '600', color: colors.textLight, marginBottom: nzVertical(8) },
   fieldError:  { fontSize: rs(11), color: colors.error, marginTop: nzVertical(4), marginLeft: nz(4) },
 
-  // Resend
   resendRow:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: nzVertical(20) },
   resendHint:        { fontSize: rs(12), color: colors.textLight },
   resendLink:        { fontSize: rs(12), color: colors.primary, fontWeight: '700' },
   resendLinkDisabled:{ color: colors.textLighter },
 
-  // Primary button
   primaryBtn: {
     backgroundColor: colors.primary,
     borderRadius: nz(12),
@@ -430,7 +401,6 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
 
-  // Back to login
   backToLogin:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: nz(6) },
   backToLoginText: { fontSize: rs(13), color: colors.primary, fontWeight: '600' },
 });

@@ -44,7 +44,6 @@ export const getDeviceInfo = async () => {
       },
     };
   } catch (error) {
-    console.error('getDeviceInfo error:', error);
     const fallbackId = `${Platform.OS}-${Device.modelName}-${Device.osVersion}`
       .replace(/\s+/g, '-')
       .toLowerCase();

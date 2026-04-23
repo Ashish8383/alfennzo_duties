@@ -1,15 +1,12 @@
-// src/utils/api.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { navigateToLogin } from './navigationRef';
+import useAuthStore from '../stores/authStore';
 
-const API_BASE_URL = 'https://sandbox.safeqr.in/api/v1';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL
 
-// Refresh this many seconds before the access token actually expires (clock-drift buffer)
 const REFRESH_BUFFER_SECONDS = 60;
+const API_TIMEOUT = 15000;
 
-// ─── Public endpoints — NEVER touch their Authorization header ────────────────
-// These are called before the user has a token, or to obtain/renew one.
 const PUBLIC_ENDPOINTS = [
   '/waiter/waiterLogin',
   '/waiter/verifyWaiterLoginOTP',
@@ -19,11 +16,10 @@ const PUBLIC_ENDPOINTS = [
 ];
 
 const isPublicEndpoint = (url = '') =>
-  PUBLIC_ENDPOINTS.some((p) => url.includes(p));
+  PUBLIC_ENDPOINTS.some((endpoint) => url.includes(endpoint));
 
-// ─── Refresh queue ────────────────────────────────────────────────────────────
 let isRefreshing = false;
-let failedQueue = []; // { resolve, reject }[]
+let failedQueue = [];
 
 const drainQueue = (error, newToken = null) => {
   failedQueue.forEach(({ resolve, reject }) =>
@@ -32,12 +28,14 @@ const drainQueue = (error, newToken = null) => {
   failedQueue = [];
 };
 
-// ─── AsyncStorage helpers ─────────────────────────────────────────────────────
 const getStoredUser = async () => {
   try {
     const raw = await AsyncStorage.getItem('auth-storage');
-    return raw ? JSON.parse(raw)?.state?.user ?? null : null;
-  } catch {
+    if (!raw) return null;
+    
+    const parsed = JSON.parse(raw);
+    return parsed.state?.user || parsed.user || null;
+  } catch (error) {
     return null;
   }
 };
@@ -46,160 +44,180 @@ const persistTokenUpdate = async (fields = {}) => {
   try {
     const raw = await AsyncStorage.getItem('auth-storage');
     if (!raw) return;
+    
     const parsed = JSON.parse(raw);
-    parsed.state = {
-      ...parsed.state,
-      user: { ...parsed.state?.user, ...fields },
-    };
+    const user = parsed.state?.user || parsed.user || {};
+    
+    if (parsed.state) {
+      parsed.state = {
+        ...parsed.state,
+        user: { ...user, ...fields },
+      };
+    } else {
+      parsed.user = { ...user, ...fields };
+    }
+    
     await AsyncStorage.setItem('auth-storage', JSON.stringify(parsed));
-  } catch (e) {
-    console.warn('[api] persistTokenUpdate error:', e);
+  } catch (error) {
   }
 };
 
-// ─── Expiry helpers ───────────────────────────────────────────────────────────
-// ✅ null / undefined → NOT expired. Only expired when we have a real date
-//    that has already passed. This prevents false-positives on fresh logins.
-
-/** True only when isoDate is a real date string AND it has passed. */
 const isExpired = (isoDate) =>
   !!isoDate && new Date(isoDate).getTime() <= Date.now();
 
-/** True only when isoDate is a real date string AND it's within the buffer window. */
 const isAccessTokenStale = (isoDate) =>
   !!isoDate &&
   new Date(isoDate).getTime() <= Date.now() + REFRESH_BUFFER_SECONDS * 1000;
 
-// ─── Core refresh ─────────────────────────────────────────────────────────────
 const doRefresh = async () => {
   const user = await getStoredUser();
   const { refreshToken, refreshTokenExpiresAt } = user || {};
 
   if (!refreshToken) throw new Error('No refresh token stored');
-  // Only block the network call if we actually have an expiry date that passed
   if (isExpired(refreshTokenExpiresAt)) throw new Error('Refresh token expired');
 
-  const response = await axios.post(
-    `${API_BASE_URL}/waiter/refreshToken`,
-    { refreshToken },
-    { headers: { 'Content-Type': 'application/json' }, timeout: 10000 }
-  );
-
-  const body = response.data;
-  if (!body?.status) throw new Error(body?.message || 'Refresh rejected by server');
-
-  const d = body.data || body;
-  const newAccessToken      = d.accessToken      || d.token;
-  const newRefreshToken     = d.refreshToken     || refreshToken;
-  const newAccessExpiresAt  = d.accessTokenExpiresAt  || null;
-  const newRefreshExpiresAt = d.refreshTokenExpiresAt || refreshTokenExpiresAt;
-
-  if (!newAccessToken) throw new Error('Refresh response missing accessToken');
-
-  const tokenFields = {
-    accessToken:           newAccessToken,
-    token:                 newAccessToken,
-    refreshToken:          newRefreshToken,
-    accessTokenExpiresAt:  newAccessExpiresAt,
-    refreshTokenExpiresAt: newRefreshExpiresAt,
-  };
-
-  // 1️⃣ Persist immediately so the next cold-start reads fresh tokens
-  await persistTokenUpdate(tokenFields);
-
-  // 2️⃣ Sync live Zustand store (best-effort)
   try {
-    const { default: useAuthStore } = await import('../stores/authStore');
-    useAuthStore.getState().updateProfile(tokenFields);
-  } catch (_) {}
+    const response = await axios.post(
+      `${API_BASE_URL}/waiter/refreshToken`,
+      { refreshToken },
+      { 
+        headers: { 'Content-Type': 'application/json' }, 
+        timeout: API_TIMEOUT 
+      }
+    );
 
-  return newAccessToken;
+    const body = response.data;
+    if (!body?.status) {
+      throw new Error(body?.message || 'Refresh rejected by server');
+    }
+
+    const data = body.data || body;
+    const newAccessToken = data.accessToken || data.token;
+    const newRefreshToken = data.refreshToken || refreshToken;
+    const newAccessExpiresAt = data.accessTokenExpiresAt || null;
+    const newRefreshExpiresAt = data.refreshTokenExpiresAt || refreshTokenExpiresAt;
+
+    if (!newAccessToken) throw new Error('Refresh response missing accessToken');
+
+    const tokenFields = {
+      accessToken: newAccessToken,
+      token: newAccessToken,
+      refreshToken: newRefreshToken,
+      accessTokenExpiresAt: newAccessExpiresAt,
+      refreshTokenExpiresAt: newRefreshExpiresAt,
+    };
+
+    await persistTokenUpdate(tokenFields);
+    
+    try {
+      const { default: useAuthStore } = await import('../stores/authStore');
+      useAuthStore.getState()?.updateProfile?.(tokenFields);
+    } catch {
+      // Store not available
+    }
+
+    return newAccessToken;
+  } catch (error) {
+    throw error;
+  }
 };
 
 const forceLogout = async () => {
-  await AsyncStorage.removeItem('auth-storage');
-  isRefreshing = false;
-  drainQueue(new Error('Session expired'));
-  failedQueue = [];
-  navigateToLogin();
+  try {
+    await AsyncStorage.removeItem('auth-storage');
+    useAuthStore.getState().logout(true);
+  } catch (error) {
+  } finally {
+    isRefreshing = false;
+    drainQueue(new Error('Session expired'));
+    failedQueue = [];
+  }
 };
 
-// ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: API_TIMEOUT,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// ─── Request interceptor — proactive token refresh ────────────────────────────
+// Request Interceptor
 api.interceptors.request.use(
   async (config) => {
-    // ✅ Skip ALL token logic for public/auth endpoints
-    if (isPublicEndpoint(config.url)) return config;
-
-    const user = await getStoredUser();
-    const { accessToken, accessTokenExpiresAt, refreshTokenExpiresAt } = user || {};
-
-    // No token at all — let the request through; server will return 401 if needed
-    if (!accessToken) return config;
-
-    // ── Case 1: Token is fresh — attach and send ──────────────────────────
-    if (!isAccessTokenStale(accessTokenExpiresAt)) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+    if (isPublicEndpoint(config.url)) {
       return config;
     }
 
-    // ── Case 2: Access token stale + refresh token also expired ───────────
-    if (isExpired(refreshTokenExpiresAt)) {
-      await forceLogout();
-      return Promise.reject(new Error('Session expired. Please log in again.'));
-    }
+    try {
+      const user = await getStoredUser();
+      const accessToken = user?.accessToken || user?.token;
+      const accessTokenExpiresAt = user?.accessTokenExpiresAt;
+      const refreshTokenExpiresAt = user?.refreshTokenExpiresAt;
 
-    // ── Case 3: Access stale, refresh still valid — proactive refresh ──────
-    if (!isRefreshing) {
-      isRefreshing = true;
-      try {
-        const newToken = await doRefresh();
-        drainQueue(null, newToken);
-        config.headers.Authorization = `Bearer ${newToken}`;
+      if (!accessToken) {
         return config;
-      } catch (err) {
-        drainQueue(err);
-        await forceLogout();
-        return Promise.reject(err);
-      } finally {
-        isRefreshing = false;
       }
-    }
 
-    // ── Case 4: Refresh already in flight — queue this request ─────────────
-    return new Promise((resolve, reject) => {
-      failedQueue.push({
-        resolve: (newToken) => {
+      if (!isAccessTokenStale(accessTokenExpiresAt)) {
+        config.headers.Authorization = `Bearer ${accessToken}`;
+        return config;
+      }
+
+      if (isExpired(refreshTokenExpiresAt)) {
+        await forceLogout();
+        return Promise.reject(new Error('Session expired. Please log in again.'));
+      }
+
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          const newToken = await doRefresh();
+          drainQueue(null, newToken);
           config.headers.Authorization = `Bearer ${newToken}`;
-          resolve(config);
-        },
-        reject,
+          return config;
+        } catch (error) {
+          drainQueue(error);
+          await forceLogout();
+          return Promise.reject(error);
+        } finally {
+          isRefreshing = false;
+        }
+      }
+
+      return new Promise((resolve, reject) => {
+        failedQueue.push({
+          resolve: (newToken) => {
+            config.headers.Authorization = `Bearer ${newToken}`;
+            resolve(config);
+          },
+          reject,
+        });
       });
-    });
+    } catch (error) {
+      return config;
+    }
   },
   (error) => Promise.reject(error)
 );
 
-// ─── Response interceptor — reactive 401 fallback ─────────────────────────────
-// Catches edge-cases: server-side revocation, clock drift, etc.
+// Response Interceptor
 api.interceptors.response.use(
   (response) => response,
-
   async (error) => {
-    const original = error.config;
+    const originalRequest = error.config;
 
-    if (error.response?.status !== 401 || original._retry) {
-      return Promise.reject(error);
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message || 
+                          'An error occurred';
+      
+      return Promise.reject({
+        ...error,
+        userMessage: errorMessage,
+      });
     }
 
-    // Refresh call itself came back 401 — session is completely dead
-    if (isPublicEndpoint(original.url)) {
+    if (isPublicEndpoint(originalRequest.url)) {
       return Promise.reject(error);
     }
 
@@ -207,22 +225,22 @@ api.interceptors.response.use(
       return new Promise((resolve, reject) => {
         failedQueue.push({
           resolve: (newToken) => {
-            original.headers.Authorization = `Bearer ${newToken}`;
-            resolve(api(original));
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            resolve(api(originalRequest));
           },
           reject,
         });
       });
     }
 
-    original._retry = true;
+    originalRequest._retry = true;
     isRefreshing = true;
 
     try {
       const newToken = await doRefresh();
       drainQueue(null, newToken);
-      original.headers.Authorization = `Bearer ${newToken}`;
-      return api(original);
+      originalRequest.headers.Authorization = `Bearer ${newToken}`;
+      return api(originalRequest);
     } catch (refreshError) {
       drainQueue(refreshError);
       await forceLogout();

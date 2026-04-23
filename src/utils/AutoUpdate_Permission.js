@@ -10,12 +10,10 @@ export const updateFCMToken = async (fcmToken) => {
     });
     
     if (response.data?.status === true) {
-      console.log('✅ FCM Token updated successfully');
       return true;
     }
     return false;
   } catch (error) {
-    console.error('❌ Failed to update FCM token:', error?.response?.data?.message || error.message);
     return false;
   }
 };
@@ -30,12 +28,10 @@ export const updateLocation = async (latitude, longitude) => {
     });
     
     if (response.data?.status === true) {
-      console.log('✅ Location updated successfully');
       return true;
     }
     return false;
   } catch (error) {
-    console.error('❌ Failed to update location:', error?.response?.data?.message || error.message);
     return false;
   }
 };

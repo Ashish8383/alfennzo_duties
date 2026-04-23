@@ -99,7 +99,7 @@ export default function ProductDetailModal({
               <Text style={styles.productDescription}>{product.description || 'No description available'}</Text>
 
               <View style={styles.priceRow}>
-                <Text style={styles.productPrice}>₹{Math.round(displayPrice)}</Text>
+                <Text style={styles.productPrice}>₹{displayPrice}</Text>
                 {product.isDiscountedByRestraurant && product.discountinPercentageByRestraurant > 0 && (
                   <>
                     <Text style={styles.originalPrice}>₹{product.price}</Text>
@@ -137,7 +137,7 @@ export default function ProductDetailModal({
           <View style={styles.footer}>
             {quantity === 0 ? (
               <TouchableOpacity style={styles.addToCartBtn} onPress={onAdd} activeOpacity={0.8}>
-                <Text style={styles.addToCartBtnText}>Add to Cart • ₹{Math.round(displayPrice)}</Text>
+                <Text style={styles.addToCartBtnText}>Add to Cart • ₹{displayPrice}</Text>
               </TouchableOpacity>
             ) : (
               <View style={styles.quantityFooter}>
@@ -148,7 +148,7 @@ export default function ProductDetailModal({
                   onDecrease={onDecrease}
                   size="large"
                 />
-                <Text style={styles.totalPrice}>Total: ₹{Math.round(displayPrice * quantity)}</Text>
+                <Text style={styles.totalPrice}>Total: ₹{displayPrice * quantity}</Text>
               </View>
             )}
           </View>

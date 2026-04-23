@@ -69,7 +69,6 @@ export default function OTPVerificationModal({
     }
   }, [value]);
 
-  // ❌ ERROR → SHAKE + RESET
   useEffect(() => {
     if (error) {
       triggerShake();

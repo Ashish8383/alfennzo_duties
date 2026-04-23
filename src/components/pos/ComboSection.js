@@ -10,9 +10,8 @@ const PRIMARY    = colors.primary;
 const TEXT_PRIMARY = '#1A1A1A';
 const TEXT_LIGHT   = '#999999';
 
-// Two-column grid, same column width as regular MenuItem grid
-const HORIZONTAL_PADDING = nz(12); // matches scrollContent paddingHorizontal in POSScreen
-const GAP                = nz(12); // gap between columns
+const HORIZONTAL_PADDING = nz(12); 
+const GAP                = nz(12); 
 const CARD_WIDTH         = (SW - HORIZONTAL_PADDING * 2 - GAP) / 2;
 
 const ComboSection = ({
@@ -25,7 +24,6 @@ const ComboSection = ({
 }) => {
   if (!combos || combos.length === 0) return null;
 
-  // Build rows of 2
   const rows = [];
   for (let i = 0; i < combos.length; i += 2) {
     rows.push(combos.slice(i, i + 2));
@@ -33,7 +31,6 @@ const ComboSection = ({
 
   return (
     <View style={styles.container}>
-      {/* Section header */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Ionicons name="gift-outline" size={nz(20)} color={PRIMARY} />
@@ -45,7 +42,6 @@ const ComboSection = ({
         <Text style={styles.subtitle}>Best value bundles for you</Text>
       </View>
 
-      {/* 2-column grid */}
       {rows.map((row, rowIdx) => (
         <View key={rowIdx} style={styles.row}>
           {row.map(item => {
@@ -65,7 +61,6 @@ const ComboSection = ({
               </View>
             );
           })}
-          {/* placeholder to keep grid aligned when odd number */}
           {row.length === 1 && <View style={styles.cell} />}
         </View>
       ))}

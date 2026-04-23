@@ -16,9 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { navigateToHomeOngoingTab, navigateToHomePendingTab } from './navigationRef';
 import { subscribeToNotifications } from './notificationService';
 
-// ─── Responsive helpers (self-contained, no external import needed) ───────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
-const BASE_W = 390; // iPhone 14 Pro reference width
+const BASE_W = 390;
 const scale  = SCREEN_W / BASE_W;
 const rz     = (size) => Math.round(PixelRatio.roundToNearestPixel(size * scale));
 const rzV    = (size) => Math.round(PixelRatio.roundToNearestPixel(size * (SCREEN_H / 844)));
@@ -28,7 +27,6 @@ const DISMISS_MS  = 4500;
 const SLIDE_IN_MS = 360;
 const SLIDE_OUT_MS = 260;
 
-// ─── Theme per notification type ─────────────────────────────────────────────
 function getTheme(type) {
   switch (type) {
     case 'success':
@@ -43,7 +41,6 @@ function getTheme(type) {
   }
 }
 
-// ─── Single banner ────────────────────────────────────────────────────────────
 function NotificationBanner({ notification, onDismiss }) {
   const insets     = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(-rz(180))).current;
@@ -64,13 +61,11 @@ function NotificationBanner({ notification, onDismiss }) {
       }),
     ]).start();
 
-    // Drain progress bar
     Animated.timing(progress, {
       toValue: 0, duration: DISMISS_MS,
       useNativeDriver: false, easing: Easing.linear,
     }).start();
 
-    // Auto-dismiss
     timerRef.current = setTimeout(() => slideOut(onDismiss), DISMISS_MS);
     return () => clearTimeout(timerRef.current);
   }, []);
@@ -111,20 +106,13 @@ function NotificationBanner({ notification, onDismiss }) {
       styles.banner,
       { top: bannerTop, opacity, transform: [{ translateY }] },
     ]}>
-      {/* ── Tap area ── */}
       <TouchableOpacity activeOpacity={0.88} onPress={handleTap} style={styles.inner}>
-
-        {/* Left colour bar */}
         <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
-
-        {/* Icon circle */}
         <View style={[styles.iconCircle, { backgroundColor: accentColor + '18' }]}>
           <Ionicons name={icon} size={rz(22)} color={accentColor} />
         </View>
 
-        {/* Text block */}
         <View style={styles.textBlock}>
-          {/* Title row */}
           <View style={styles.titleRow}>
             <Text style={styles.titleText} numberOfLines={1}>
               {notification.title}
@@ -134,16 +122,13 @@ function NotificationBanner({ notification, onDismiss }) {
             </View>
           </View>
 
-          {/* Body */}
           <Text style={styles.bodyText} numberOfLines={2}>
             {notification.body}
           </Text>
 
-          {/* Tap hint */}
           <Text style={styles.tapHint}>Tap to view →</Text>
         </View>
 
-        {/* Close button */}
         <TouchableOpacity
           onPress={handleClose}
           style={styles.closeBtn}
@@ -152,8 +137,6 @@ function NotificationBanner({ notification, onDismiss }) {
           <Ionicons name="close" size={rz(15)} color="#BDBDBD" />
         </TouchableOpacity>
       </TouchableOpacity>
-
-      {/* Progress drain bar */}
       <View style={styles.progressTrack}>
         <Animated.View style={[styles.progressFill, { width: progressWidth, backgroundColor: accentColor }]} />
       </View>
@@ -161,7 +144,6 @@ function NotificationBanner({ notification, onDismiss }) {
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
 export default function InAppNotification() {
   const [queue, setQueue] = useState([]);
 
@@ -176,7 +158,7 @@ export default function InAppNotification() {
   }, []);
 
   if (queue.length === 0) return null;
-  const current = queue[queue.length - 1]; // show only the newest
+  const current = queue[queue.length - 1]; 
 
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
@@ -189,7 +171,6 @@ export default function InAppNotification() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   banner: {
     position: 'absolute',
@@ -199,13 +180,11 @@ const styles = StyleSheet.create({
     borderRadius: rz(18),
     overflow: 'hidden',
     zIndex: 99999,
-    // Shadow
     shadowColor: '#000',
     shadowOpacity: 0.16,
     shadowRadius: rz(20),
     shadowOffset: { width: 0, height: rz(6) },
     elevation: 16,
-    // Subtle border
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(0,0,0,0.08)',
   },

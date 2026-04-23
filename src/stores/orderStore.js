@@ -2,36 +2,29 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-// Convert our { day, month, year } object → ISO date string
 function toISODate({ day, month, year }) {
   const mm = String(month + 1).padStart(2, '0');
   const dd = String(day).padStart(2, '0');
   return `${year}-${mm}-${dd}`;
 }
 
-// ─── Store ────────────────────────────────────────────────────────────────────
 const useOrderHistoryStore = create((set, get) => ({
-  // ── Completed tab ──────────────────────────────────────────────────────────
   completedOrders: [],
   completedPage: 1,
   completedTotalPages: 1,
   completedLoading: false,
   completedLoadingMore: false,
 
-  // ── Cancelled tab ──────────────────────────────────────────────────────────
   cancelledOrders: [],
   cancelledPage: 1,
   cancelledTotalPages: 1,
   cancelledLoading: false,
   cancelledLoadingMore: false,
 
-  // ── Shared ─────────────────────────────────────────────────────────────────
   analytics: null,
-  dateRange: null, // { from: { day, month, year }, to: { day, month, year } }
+  dateRange: null,
   error: null,
 
-  // ── Fetch order history for a specific status ──────────────────────────────
   fetchOrderHistory: async (status, page = 1, dateRange = null, replace = true) => {
     const isCompleted = status === 'DELIVERED';
     const loadingKey = isCompleted ? 'completedLoading' : 'cancelledLoading';
@@ -44,7 +37,6 @@ const useOrderHistoryStore = create((set, get) => ({
     else set({ [moreKey]: true });
 
     try {
-      // Build query params
       const params = {
         page,
         limit: 20,
@@ -54,7 +46,6 @@ const useOrderHistoryStore = create((set, get) => ({
       if (dateRange?.from) params.startDate = toISODate(dateRange.from);
       if (dateRange?.to) params.endDate = toISODate(dateRange.to);
 
-      // Make API call using the configured api instance
       const response = await api.get('/waiter/ordersHistory', { params });
 
       if (response.data?.status === true) {
@@ -64,7 +55,6 @@ const useOrderHistoryStore = create((set, get) => ({
           [ordersKey]: replace ? orders : [...state[ordersKey], ...orders],
           [pageKey]: pagination.page,
           [totalKey]: pagination.totalPages,
-          // Only update analytics from completed tab (primary source)
           ...(isCompleted ? { analytics } : {}),
           [loadingKey]: false,
           [moreKey]: false,
@@ -86,9 +76,7 @@ const useOrderHistoryStore = create((set, get) => ({
     }
   },
 
-  // ── Fetch both completed and cancelled orders ──────────────────────────────
   fetchAllOrders: async (dateRange = null) => {
-    // Update dateRange in state first
     if (dateRange) set({ dateRange });
     else if (dateRange === null && get().dateRange !== null) set({ dateRange: null });
 
@@ -100,33 +88,28 @@ const useOrderHistoryStore = create((set, get) => ({
     ]);
   },
 
-  // ── Load more completed orders (pagination) ────────────────────────────────
   loadMoreCompleted: async () => {
     const { completedPage, completedTotalPages, completedLoadingMore, dateRange, fetchOrderHistory } = get();
     if (completedLoadingMore || completedPage >= completedTotalPages) return;
     await fetchOrderHistory('DELIVERED', completedPage + 1, dateRange, false);
   },
 
-  // ── Load more cancelled orders (pagination) ────────────────────────────────
   loadMoreCancelled: async () => {
     const { cancelledPage, cancelledTotalPages, cancelledLoadingMore, dateRange, fetchOrderHistory } = get();
     if (cancelledLoadingMore || cancelledPage >= cancelledTotalPages) return;
     await fetchOrderHistory('CANCELLED', cancelledPage + 1, dateRange, false);
   },
 
-  // ── Apply date range filter ────────────────────────────────────────────────
   applyDateRange: async (range) => {
     set({ dateRange: range, completedPage: 1, cancelledPage: 1 });
     await get().fetchAllOrders(range);
   },
 
-  // ── Clear date range filter ────────────────────────────────────────────────
   clearDateRange: async () => {
     set({ dateRange: null, completedPage: 1, cancelledPage: 1 });
     await get().fetchAllOrders(null);
   },
 
-  // ── Reset entire store ─────────────────────────────────────────────────────
   resetOrderHistory: () => {
     set({
       completedOrders: [],
@@ -145,7 +128,6 @@ const useOrderHistoryStore = create((set, get) => ({
     });
   },
 
-  // ── Clear error ────────────────────────────────────────────────────────────
   clearError: () => set({ error: null }),
 }));
 

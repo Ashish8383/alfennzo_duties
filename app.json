@@ -1,27 +1,28 @@
 {
   "expo": {
-    "name": "Alfennzo duties",
+    "name": "Alfennzo Duties",
     "slug": "waiter-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/images/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./src/assets/images/splash.png",
+      "image": "./src/assets/images/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0B735F"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.alfennzo.duties"
+      "bundleIdentifier": "com.alfennzo.duties",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "navigationBarColor": "#FFFFFF",
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/images/adaptive-icon.png",
+        "foregroundImage": "./src/assets/images/icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.alfennzo.duties",

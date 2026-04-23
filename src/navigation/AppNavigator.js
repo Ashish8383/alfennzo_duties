@@ -4,6 +4,7 @@ import CartScreen from '../screens/CartScreen';
 import EarningsScreen from '../screens/EarningsScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import LoginScreen from '../screens/LoginScreen';
+import PayoutHistoryScreen from '../screens/Payouthistoryscreen';
 import PermissionStatusScreen from '../screens/PermissionStatusScreen';
 import ShiftHistoryScreen from '../screens/ShiftHistoryScreen';
 import useAuthStore from '../stores/authStore';
@@ -28,10 +29,10 @@ export default function AppNavigator() {
         </>
       ) : (
         <>
-          {/* ✅ Main tabs */}
           <Stack.Screen name="Main" component={BottomTabNavigator} />
           <Stack.Screen name="PermissionStatus" component={PermissionStatusScreen} />
           <Stack.Screen name="ShiftHistory" component={ShiftHistoryScreen} />
+          <Stack.Screen name="PayoutHistory" component={PayoutHistoryScreen} />
           <Stack.Screen
             name="Earnings"
             component={EarningsScreen}

@@ -50,8 +50,8 @@ const styles = StyleSheet.create({
     borderColor: PRIMARY,
     borderRadius: nz(8),
     paddingHorizontal: nz(6),
-    height: nz(32), // 👈 same as ADD button height
-    minWidth: nz(90), // 👈 compact width
+    height: nz(32), 
+    minWidth: nz(90), 
   },
 
   qtyBtn: {

@@ -1,60 +1,67 @@
-import { createRef } from 'react';
+// src/utils/navigationRef.js
+import { CommonActions, createNavigationContainerRef } from '@react-navigation/native';
 
-export const navigationRef = createRef();
+export const navigationRef = createNavigationContainerRef();
 
 export function navigate(name, params) {
-  if (navigationRef.current?.isReady()) {
-    navigationRef.current.navigate(name, params);
+  if (navigationRef.isReady()) {
+    navigationRef.navigate(name, params);
   }
 }
 
 export function navigateToHomePendingTab() {
-  if (navigationRef.current?.isReady()) {
-    navigationRef.current.reset({
-      index: 0,
-      routes: [
-        {
-          name: 'Main',
-          state: {
-            routes: [
-              {
-                name: 'Home',
-                params: { initialTab: 0 },
-              },
-            ],
+  if (navigationRef.isReady()) {
+    navigationRef.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'Main',
+            state: {
+              routes: [
+                {
+                  name: 'Home',
+                  params: { initialTab: 0 },
+                },
+              ],
+            },
           },
-        },
-      ],
-    });
+        ],
+      })
+    );
   }
 }
 
 export function navigateToHomeOngoingTab() {
-  if (navigationRef.current?.isReady()) {
-    navigationRef.current.reset({
-      index: 1,
-      routes: [
-        {
-          name: 'Main',
-          state: {
-            routes: [
-              {
-                name: 'Home',
-                params: { initialTab: 1 },
-              },
-            ],
+  if (navigationRef.isReady()) {
+    navigationRef.dispatch(
+      CommonActions.reset({
+        index: 0, 
+        routes: [
+          {
+            name: 'Main',
+            state: {
+              routes: [
+                {
+                  name: 'Home',
+                  params: { initialTab: 1 },
+                },
+              ],
+            },
           },
-        },
-      ],
-    });
+        ],
+      })
+    );
   }
 }
 
 export function navigateToLogin() {
-  if (navigationRef.current?.isReady()) {
-    navigationRef.current.reset({
-      index: 0,
-      routes: [{ name: 'Login' }],
-    });
+  if (navigationRef.isReady()) {
+    navigationRef.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      })
+    );
   }
 }

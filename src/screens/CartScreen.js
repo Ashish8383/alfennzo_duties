@@ -1,6 +1,5 @@
 // screens/CartScreen.js
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -163,22 +162,45 @@ const resolvePrice = it =>
     ? it.price * (1 - it.discountinPercentageByRestraurant / 100)
     : (it.price ?? 0);
 
-const resolveImage = it => it?.image || it?.categoryImage || it?.comboData?.image || null;
-function ItemImage({ uri, size = nz(72) }) {
+const resolveImage = it => it?.image || it?.comboData?.image || null;
+
+function ItemImage({ uri, size = nz(72), itemType }) {
   const [err, setErr] = useState(false);
-  if (!err && uri) {
+  const [imgLoadError, setImgLoadError] = useState(false);
+
+  const shouldShowImage = !err && !imgLoadError && uri;
+  const isCombo = itemType === 'combo';
+
+  if (shouldShowImage) {
     return (
       <Image
         source={{ uri }}
         style={{ width: size, height: size, borderRadius: nz(10), backgroundColor: '#F0F0F0' }}
-        onError={() => setErr(true)}
+        onError={() => {
+          setErr(true);
+          setImgLoadError(true);
+        }}
         resizeMode="cover"
       />
     );
   }
+
   return (
-    <View style={{ width: size, height: size, borderRadius: nz(10), backgroundColor: '#F0F0F0', justifyContent: 'center', alignItems: 'center' }}>
-      <MaterialCommunityIcons name="food" size={nz(28)} color={TEXT3} />
+    <View style={{
+      width: size,
+      height: size,
+      borderRadius: nz(10),
+      backgroundColor: '#F0F0F0',
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#E0E0E0'
+    }}>
+      <MaterialCommunityIcons
+        name={isCombo ? "gift-outline" : "food-outline"}
+        size={nz(28)}
+        color={TEXT3}
+      />
     </View>
   );
 }
@@ -224,7 +246,11 @@ function CartCard({ item, onInc, onDec, onRemove }) {
   return (
     <View style={cc.card}>
       <View style={cc.mainRow}>
-        <ItemImage uri={imgUri} size={nz(72)} />
+        <ItemImage
+          uri={imgUri}
+          size={nz(72)}
+          itemType={item.itemType}
+        />
         <View style={cc.rightBlock}>
           <View style={cc.nameRow}>
             <VegDot isVeg={item.isVeg} />
@@ -315,15 +341,15 @@ function SeatPickerSheet({ visible, seatingData, onConfirm, onClose, insets }) {
   };
 
   const pickAudi = a => { setAudi(a); setRow(null); setSeat(null); setCategoryInfo(null); slideTo(1); };
-  
-  const pickRow = r => { 
-    setRow(r); 
+
+  const pickRow = r => {
+    setRow(r);
     setSeat(null);
     const selectedLine = lines.find(l => l.line === r);
     setCategoryInfo(selectedLine?.seatCategoryDetails || null);
-    slideTo(2); 
+    slideTo(2);
   };
-  
+
   const pickSeat = s => setSeat(s === seat ? null : s);
 
   const goBack = () => {
@@ -339,15 +365,15 @@ function SeatPickerSheet({ visible, seatingData, onConfirm, onClose, insets }) {
   const handleClose = () => { reset(); onClose(); };
 
   const confirm = () => {
-    if (audi && seat) { 
-      onConfirm({ 
-        audi, 
-        row, 
-        seat, 
+    if (audi && seat) {
+      onConfirm({
+        audi,
+        row,
+        seat,
         categoryId: categoryInfo?.categoryId,
         categoryName: categoryInfo?.categoryName
-      }); 
-      handleClose(); 
+      });
+      handleClose();
     }
   };
 
@@ -363,8 +389,8 @@ function SeatPickerSheet({ visible, seatingData, onConfirm, onClose, insets }) {
           <View style={sh.header}>
             {step > 0
               ? <TouchableOpacity onPress={goBack} style={sh.navBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Ionicons name="arrow-back" size={nz(20)} color={TEXT1} />
-                </TouchableOpacity>
+                <Ionicons name="arrow-back" size={nz(20)} color={TEXT1} />
+              </TouchableOpacity>
               : <View style={sh.navBtn} />}
             <View style={{ flex: 1 }}>
               <Text style={sh.headerTitle} numberOfLines={1}>
@@ -411,16 +437,16 @@ function SeatPickerSheet({ visible, seatingData, onConfirm, onClose, insets }) {
                   {screens.length === 0
                     ? <Text style={sh.none}>No audis available</Text>
                     : screens.map(sc => (
-                        <TouchableOpacity
-                          key={sc.audiNo}
-                          style={[sh.gridBtn, audi === sc.audiNo && sh.gridBtnActive]}
-                          onPress={() => pickAudi(sc.audiNo)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={sh.gridLbl}>Audi</Text>
-                          <Text style={[sh.gridNum, audi === sc.audiNo && sh.gridNumActive]}>{sc.audiNo}</Text>
-                        </TouchableOpacity>
-                      ))}
+                      <TouchableOpacity
+                        key={sc.audiNo}
+                        style={[sh.gridBtn, audi === sc.audiNo && sh.gridBtnActive]}
+                        onPress={() => pickAudi(sc.audiNo)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={sh.gridLbl}>Audi</Text>
+                        <Text style={[sh.gridNum, audi === sc.audiNo && sh.gridNumActive]}>{sc.audiNo}</Text>
+                      </TouchableOpacity>
+                    ))}
                 </ScrollView>
               </View>
 
@@ -638,6 +664,7 @@ const sx = StyleSheet.create({
   doneBtn: { marginTop: nzVertical(14), backgroundColor: PRIMARY, borderRadius: nz(14), paddingVertical: nzVertical(15), alignItems: 'center', shadowColor: PRIMARY, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   doneTxt: { fontSize: rs(16), fontWeight: '700', color: WHITE },
 });
+
 function Section({ icon, title, badge, badgeDanger, children }) {
   return (
     <View style={sc.wrap}>
@@ -667,6 +694,7 @@ const sc = StyleSheet.create({
   badgeTxt: { fontSize: rs(10), fontWeight: '700', color: WHITE },
   body: { padding: nz(14) },
 });
+
 function BillRow({ label, value, bold, accent }) {
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: nzVertical(5) }}>
@@ -687,8 +715,8 @@ function BillRow({ label, value, bold, accent }) {
     </View>
   );
 }
-export default function CartScreen({ route }) {
-  const navigation = useNavigation();
+
+export default function CartScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
 
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
@@ -697,9 +725,48 @@ export default function CartScreen({ route }) {
   const FOOTER_H = nzVertical(10) + Math.max(insets.bottom, nzVertical(16));
   const footerPB = Math.max(insets.bottom, nzVertical(16));
 
-  const { cart: initCart = {}, onCartChange } = route.params ?? {};
+  const params = route.params || {};
+  const initCart = params.cart || {};
+  const onCartChange = params.onCartChange;
+
   const [cart, setCart] = useState(initCart);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [custName, setCustName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [phoneErr, setPhoneErr] = useState('');
+  const [seatErr, setSeatErr] = useState('');
+  const [seatInfo, setSeatInfo] = useState(null);
+  const [showSeatPicker, setShowSeatPicker] = useState(false);
+  const [payMethod, setPayMethod] = useState('');
+  const [note, setNote] = useState('');
+  const [order, setOrder] = useState(null);
+  const [payMethodErr, setPayMethodErr] = useState('');
+
+  const { seatingData, createPOSOrder, orderCreating, restaurantInfo, cartFormState, setCartFormState } = useUIStore();
+  const cartItems = useMemo(() => Object.values(cart).filter(it => it && it.quantity > 0), [cart]);
+
+  // Restore form state from store when component mounts
+  useEffect(() => {
+    if (cartFormState) {
+      setCustName(cartFormState.custName || '');
+      setPhone(cartFormState.phone || '');
+      setSeatInfo(cartFormState.seatInfo || null);
+      setPayMethod(cartFormState.payMethod || '');
+      setNote(cartFormState.note || '');
+    }
+  }, []);
+
+  const subtotal = useMemo(
+    () => cartItems.reduce((s, it) => s + resolvePrice(it) * it.quantity, 0),
+    [cartItems]
+  );
+
+  const platformFeePercent = restaurantInfo?.plateformFee ?? 0;
+  const platformFeeAmount = subtotal * (platformFeePercent / 100);
+  const platformFeeTax = platformFeeAmount * 0.18;
+  const convenienceFee = platformFeeAmount + platformFeeTax;
+  const total = subtotal + convenienceFee;
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 1000);
@@ -722,31 +789,6 @@ export default function CartScreen({ route }) {
     return () => { keyboardDidShowListener.remove(); keyboardDidHideListener.remove(); };
   }, []);
 
-  const [custName, setCustName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [phoneErr, setPhoneErr] = useState('');
-  const [seatErr, setSeatErr] = useState('');
-  const [seatInfo, setSeatInfo] = useState(null);
-  const [showSeatPicker, setShowSeatPicker] = useState(false);
-  const [payMethod, setPayMethod] = useState('');
-  const [note, setNote] = useState('');
-  const [order, setOrder] = useState(null);
-  const [payMethodErr, setPayMethodErr] = useState('');
-
-  const { seatingData, createPOSOrder, orderCreating, restaurantInfo } = useUIStore();
-  const cartItems = useMemo(() => Object.values(cart).filter(it => it && it.quantity > 0), [cart]);
-
-  const subtotal = useMemo(
-    () => cartItems.reduce((s, it) => s + resolvePrice(it) * it.quantity, 0),
-    [cartItems]
-  );
-
-  const platformFeePercent = restaurantInfo?.plateformFee ?? 0;
-  const platformFeeAmount = subtotal * (platformFeePercent / 100);
-  const platformFeeTax = platformFeeAmount * 0.18;           
-  const convenienceFee = platformFeeAmount + platformFeeTax; 
-  const total = subtotal + convenienceFee;
-
   const inc = useCallback(id =>
     setCart(p => p[id] ? { ...p, [id]: { ...p[id], quantity: p[id].quantity + 1 } } : p), []);
 
@@ -757,6 +799,19 @@ export default function CartScreen({ route }) {
   }), []);
 
   const remove = useCallback(id => setCart(p => { const { [id]: _, ...r } = p; return r; }), []);
+
+  const handleBack = () => {
+    // Save form state to store before going back
+    setCartFormState({
+      custName,
+      phone,
+      seatInfo,
+      payMethod,
+      note,
+    });
+
+    navigation.goBack();
+  };
 
   const validateAndPlace = () => {
     let valid = true;
@@ -840,6 +895,9 @@ export default function CartScreen({ route }) {
     const result = await createPOSOrder(orderPayload);
 
     if (result.success) {
+      // Clear form state from store on successful order
+      setCartFormState(null);
+
       const od = {
         orderId: result.data?.orderId || `ORD-${Date.now()}`,
         timestamp: new Date().toISOString(),
@@ -888,8 +946,7 @@ export default function CartScreen({ route }) {
     !orderCreating;
 
   const PAY_METHODS = [
-    { id: 'credit_card', label: 'Credit Card', icon: 'card-outline' },
-    { id: 'debit_card', label: 'Debit Card', icon: 'card-outline' },
+    { id: 'card', label: 'Card', icon: 'card-outline' },
     { id: 'upi', label: 'UPI', icon: 'qr-code-outline' },
   ];
 
@@ -900,7 +957,7 @@ export default function CartScreen({ route }) {
       <>
         <StatusBar style="dark" backgroundColor={BG} />
         <SafeAreaView style={scr.root} edges={['top', 'left', 'right']}>
-          <CartHeader title="Cart" onBack={() => navigation.goBack()} />
+          <CartHeader title="Cart" onBack={handleBack} />
           <CartScreenSkeleton />
           <View style={[scr.footer, { paddingBottom: footerPB }]}>
             <SkeletonBox width="100%" height={nzVertical(56)} borderRadius={nz(14)} />
@@ -915,12 +972,12 @@ export default function CartScreen({ route }) {
       <>
         <StatusBar style="dark" backgroundColor={BG} />
         <SafeAreaView style={scr.root} edges={['top', 'left', 'right']}>
-          <CartHeader title="Cart" onBack={() => navigation.goBack()} />
+          <CartHeader title="Cart" onBack={handleBack} />
           <View style={scr.emptyWrap}>
             <MaterialCommunityIcons name="cart-off" size={nz(64)} color={TEXT3} />
             <Text style={scr.emptyTitle}>Your cart is empty</Text>
             <Text style={scr.emptySub}>Add items from the menu</Text>
-            <TouchableOpacity style={scr.emptyBtn} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+            <TouchableOpacity style={scr.emptyBtn} onPress={handleBack} activeOpacity={0.85}>
               <Text style={scr.emptyBtnTxt}>← Back to Menu</Text>
             </TouchableOpacity>
           </View>
@@ -933,7 +990,7 @@ export default function CartScreen({ route }) {
     <>
       <StatusBar style="dark" backgroundColor={BG} />
       <SafeAreaView style={scr.root} edges={['top', 'left', 'right']}>
-        <CartHeader title={`Cart (${cartItems.length})`} onBack={() => navigation.goBack()} />
+        <CartHeader title={`Cart (${cartItems.length})`} onBack={handleBack} />
 
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -1009,28 +1066,32 @@ export default function CartScreen({ route }) {
               badge={seatInfo?.seat ? '✓ Selected' : 'Required'}
               badgeDanger={!seatInfo?.seat}
             >
+
               {seatInfo?.seat ? (
                 <View style={scr.seatCard}>
-                  <View style={scr.seatCardLeft}>
+                  <View style={scr.seatCardTop}>
                     <View style={scr.seatIconBox}>
-                      <Ionicons name="location" size={nz(20)} color={PRIMARY} />
+                      <Ionicons name="location" size={nz(18)} color={PRIMARY} />
                     </View>
-                    <View>
-                      <Text style={scr.seatCardTitle}>
-                        {seatInfo.categoryName && (
-                          <Text style={{ color: PRIMARY, fontWeight: '600' }}>
-                            {seatInfo.categoryName}{' '}
-                          </Text>
-                        )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={scr.seatCardTitle} numberOfLines={2}>
                         Audi {seatInfo.audi}
                         {seatInfo.row ? ` /${seatInfo.row}` : ''}
                         {seatInfo.seat ? ` ${seatInfo.seat}` : ''}
                       </Text>
                     </View>
+                    <TouchableOpacity style={scr.changeBtn} onPress={() => setShowSeatPicker(true)} activeOpacity={0.7}>
+                      <Text style={scr.changeTxt}>Change</Text>
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity style={scr.changeBtn} onPress={() => setShowSeatPicker(true)} activeOpacity={0.7}>
-                    <Text style={scr.changeTxt}>Change</Text>
-                  </TouchableOpacity>
+                  {seatInfo.categoryName && (
+                    <View style={scr.categoryBadgeFull}>
+                      <Ionicons name="pricetag-outline" size={nz(12)} color={PRIMARY} />
+                      <Text style={scr.categoryBadgeTextFull} numberOfLines={2}>
+                        {seatInfo.categoryName}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               ) : (
                 <TouchableOpacity style={scr.seatPrompt} onPress={() => setShowSeatPicker(true)} activeOpacity={0.8}>
@@ -1149,12 +1210,55 @@ const scr = StyleSheet.create({
   backBtn: { width: nz(40), height: nz(40), borderRadius: nz(20), backgroundColor: BG, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: rs(17), fontWeight: '700', color: TEXT1 },
   scroll: { paddingHorizontal: nz(14), paddingTop: nzVertical(14) },
+seatCard: { 
+  backgroundColor: PRIMARY_PALE, 
+  borderRadius: nz(12), 
+  padding: nz(12), 
+  borderWidth: 1, 
+  borderColor: PRIMARY + '30', 
+  gap: nz(8)
+},
+seatCardTop: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: nz(8),
+},
+categoryBadgeFull: {
+  flexDirection: 'row',
+  alignItems: 'flex-start',
+  gap: nz(6),
+  backgroundColor: WHITE,
+  borderRadius: nz(8),
+  padding: nz(8),
+  borderWidth: 1,
+  borderColor: PRIMARY + '20',
+},
+categoryBadgeTextFull: {
+  fontSize: rs(11), 
+  fontWeight: '600', 
+  color: PRIMARY,
+  flex: 1,
+  flexWrap: 'wrap',
+},
 
-  seatCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: PRIMARY_PALE, borderRadius: nz(12), padding: nz(12), borderWidth: 1, borderColor: PRIMARY + '30', gap: nz(10) },
-  seatCardLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: nz(5) },
-  seatIconBox: { width: nz(35), height: nz(35), borderRadius: nz(19), backgroundColor: PRIMARY_LIGHT, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  seatCardTitle: { fontSize: rs(12), fontWeight: '700', color: TEXT1, flexShrink: 1 },
-  changeBtn: { backgroundColor: PRIMARY_LIGHT, borderRadius: nz(8), paddingHorizontal: nz(12), paddingVertical: nzVertical(8), borderWidth: 1, borderColor: PRIMARY + '40', flexShrink: 0 },
+  seatCardTitle: {
+    fontSize: rs(13),
+    fontWeight: '700',
+    color: TEXT1,
+    flexShrink: 1,
+    flexWrap: 'wrap', // Allow wrapping
+  },
+
+  changeBtn: {
+    backgroundColor: PRIMARY_LIGHT,
+    borderRadius: nz(8),
+    paddingHorizontal: nz(12),
+    paddingVertical: nzVertical(8),
+    borderWidth: 1,
+    borderColor: PRIMARY + '40',
+    flexShrink: 0,
+    marginTop: nz(2) // Align with content
+  },
   changeTxt: { fontSize: rs(11), fontWeight: '700', color: PRIMARY },
 
   seatPrompt: { flexDirection: 'row', alignItems: 'center', gap: nz(12), backgroundColor: PRIMARY_PALE, borderRadius: nz(12), padding: nz(14), borderWidth: 1.5, borderColor: PRIMARY + '30', borderStyle: 'dashed' },

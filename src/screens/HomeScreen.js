@@ -238,8 +238,7 @@ const DutySwitch = memo(({ value, onValueChange, disabled, large }) => {
 });
 DutySwitch.displayName = 'DutySwitch';
 
-// ─── Duty Modal ───────────────────────────────────────────────────────────────
-const DutyModal = memo(({ visible, goingOnDuty, onConfirm, onCancel, isLoading }) => {
+const DutyModal = memo(({ visible, goingOnDuty, onConfirm, onCancel, isLoading, dutyChangeStep, error }) => {
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -248,54 +247,198 @@ const DutyModal = memo(({ visible, goingOnDuty, onConfirm, onCancel, isLoading }
 
   if (!visible) return null;
 
+  const getStepInfo = (step) => {
+    if (!step) return { icon: 'time-outline', color: colors.textLight };
+    if (step.includes('permission')) return { icon: 'shield-outline', color: '#2196F3' };
+    if (step.includes('Fetching')) return { icon: 'locate-outline', color: '#FF9800' };
+    if (step.includes('Retrying')) return { icon: 'refresh-outline', color: '#FF5722' };
+    if (step.includes('captured') || step.includes('Location captured')) return { icon: 'checkmark-circle', color: '#4CAF50' };
+    if (step.includes('Going on duty')) return { icon: 'arrow-forward-circle', color: colors.primary };
+    if (step.includes('Going off duty')) return { icon: 'arrow-back-circle', color: '#E53935' };
+    return { icon: 'sync-outline', color: colors.primary };
+  };
+
+  const stepInfo = getStepInfo(dutyChangeStep);
+  const hasError = !!error;
+
   return (
     <Animated.View style={[StyleSheet.absoluteFillObject, mdSt.overlay, { opacity: anim }]}>
       <Animated.View style={[mdSt.box, { transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }] }]}>
         <View style={[mdSt.iconWrap, { backgroundColor: goingOnDuty ? '#E8F5F0' : '#FFF3F3' }]}>
-          <Ionicons
-            name={goingOnDuty ? 'checkmark-circle-outline' : 'pause-circle-outline'}
-            size={nz(40)}
-            color={goingOnDuty ? colors.primary : '#E53935'}
-          />
+          {isLoading ? (
+            <ActivityIndicator size="large" color={goingOnDuty ? colors.primary : '#E53935'} />
+          ) : (
+            <Ionicons
+              name={goingOnDuty ? 'checkmark-circle-outline' : 'pause-circle-outline'}
+              size={nz(40)}
+              color={goingOnDuty ? colors.primary : '#E53935'}
+            />
+          )}
         </View>
-        <Text style={mdSt.title}>{goingOnDuty ? 'Go On Duty?' : 'Go Off Duty?'}</Text>
-        <Text style={mdSt.subtitle}>
-          {goingOnDuty
-            ? 'You will start receiving new orders and appear available to customers.'
-            : 'You will stop receiving new orders. Finish current orders before going off duty.'}
+
+        <Text style={mdSt.title}>
+          {goingOnDuty ? 'Going On Duty' : 'Going Off Duty'}
         </Text>
+
+        {isLoading && dutyChangeStep && (
+          <View style={mdSt.stepContainer}>
+            <Ionicons name={stepInfo.icon} size={nz(22)} color={stepInfo.color} />
+            <Text style={[mdSt.stepText, { color: stepInfo.color }]}>
+              {dutyChangeStep}
+            </Text>
+          </View>
+        )}
+
+        {hasError && (
+          <View style={mdSt.errorContainer}>
+            <Ionicons name="warning-outline" size={nz(18)} color="#E53935" />
+            <Text style={mdSt.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {!isLoading && !hasError && (
+          <Text style={mdSt.subtitle}>
+            {goingOnDuty
+              ? 'You will start receiving new orders and appear available to customers.'
+              : 'You will stop receiving new orders. Finish current orders before going off duty.'}
+          </Text>
+        )}
+
         <View style={mdSt.btnRow}>
-          <TouchableOpacity style={mdSt.cancelBtn} onPress={onCancel} disabled={isLoading} activeOpacity={0.7}>
-            <Text style={mdSt.cancelText}>Not Now</Text>
-          </TouchableOpacity>
           <TouchableOpacity
-            style={[mdSt.confirmBtn, { backgroundColor: goingOnDuty ? colors.primary : '#E53935' }, isLoading && { opacity: 0.7 }]}
-            onPress={onConfirm}
+            style={mdSt.cancelBtn}
+            onPress={onCancel}
             disabled={isLoading}
-            activeOpacity={0.85}
+            activeOpacity={0.7}
           >
-            {isLoading
-              ? <ActivityIndicator color={colors.white} size="small" />
-              : <Text style={mdSt.confirmText}>{goingOnDuty ? 'Go On Duty' : 'Go Off Duty'}</Text>}
+            <Text style={[mdSt.cancelText, isLoading && { color: colors.textLighter }]}>
+              {isLoading ? 'Please wait' : hasError ? 'Close' : 'Cancel'}
+            </Text>
           </TouchableOpacity>
+
+          {!isLoading && !hasError && (
+            <TouchableOpacity
+              style={[mdSt.confirmBtn, { backgroundColor: goingOnDuty ? colors.primary : '#E53935' }]}
+              onPress={onConfirm}
+              activeOpacity={0.85}
+            >
+              <Text style={mdSt.confirmText}>
+                {goingOnDuty ? 'Go On Duty' : 'Go Off Duty'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </Animated.View>
     </Animated.View>
   );
 });
-DutyModal.displayName = 'DutyModal';
 
+// Add these styles to mdSt
 const mdSt = StyleSheet.create({
-  overlay: { backgroundColor: 'rgba(0,0,0,0.48)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: nz(28), zIndex: 99 },
-  box: { backgroundColor: colors.white, borderRadius: nz(22), padding: nz(24), alignItems: 'center', width: '100%', shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 24, elevation: 12 },
-  iconWrap: { width: nz(72), height: nz(72), borderRadius: nz(36), justifyContent: 'center', alignItems: 'center', marginBottom: nzVertical(16) },
-  title: { fontSize: rs(18), fontWeight: '700', color: colors.black, marginBottom: nzVertical(8), textAlign: 'center' },
-  subtitle: { fontSize: rs(13), color: colors.textLight, textAlign: 'center', lineHeight: nzVertical(20), marginBottom: nzVertical(22) },
-  btnRow: { flexDirection: 'row', gap: nz(12), width: '100%' },
-  cancelBtn: { flex: 1, borderWidth: 1.5, borderColor: colors.border, borderRadius: nz(12), paddingVertical: nzVertical(13), alignItems: 'center' },
-  cancelText: { fontSize: rs(14), fontWeight: '600', color: colors.textLight },
-  confirmBtn: { flex: 1, borderRadius: nz(12), paddingVertical: nzVertical(13), alignItems: 'center' },
-  confirmText: { fontSize: rs(14), fontWeight: '700', color: colors.white },
+  overlay: {
+    backgroundColor: 'rgba(0,0,0,0.48)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: nz(28),
+    zIndex: 99
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: nz(8),
+    backgroundColor: '#FFF5F5',
+    borderRadius: nz(10),
+    paddingHorizontal: nz(16),
+    paddingVertical: nzVertical(12),
+    marginBottom: nzVertical(22),
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
+  },
+  errorText: {
+    fontSize: rs(12),
+    color: '#E53935',
+    fontWeight: '500',
+    flex: 1,
+  },
+  box: {
+    backgroundColor: colors.white,
+    borderRadius: nz(22),
+    padding: nz(24),
+    alignItems: 'center',
+    width: '100%',
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 12
+  },
+  iconWrap: {
+    width: nz(72),
+    height: nz(72),
+    borderRadius: nz(36),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: nzVertical(16)
+  },
+  title: {
+    fontSize: rs(18),
+    fontWeight: '700',
+    color: colors.black,
+    marginBottom: nzVertical(8),
+    textAlign: 'center'
+  },
+  subtitle: {
+    fontSize: rs(13),
+    color: colors.textLight,
+    textAlign: 'center',
+    lineHeight: nzVertical(18),
+    marginBottom: nzVertical(20)
+  },
+  stepContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: nz(8),
+    backgroundColor: '#F5F5F5',
+    borderRadius: nz(10),
+    paddingHorizontal: nz(16),
+    paddingVertical: nzVertical(12),
+    marginBottom: nzVertical(22),
+    width: '100%',
+  },
+  stepText: {
+    fontSize: rs(13),
+    fontWeight: '600',
+    flex: 1,
+  },
+  btnRow: {
+    flexDirection: 'row',
+    gap: nz(12),
+    width: '100%'
+  },
+  cancelBtn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: nz(12),
+    paddingVertical: nzVertical(13),
+    alignItems: 'center'
+  },
+  cancelText: {
+    fontSize: rs(14),
+    fontWeight: '600',
+    color: colors.textLight
+  },
+  confirmBtn: {
+    flex: 1,
+    borderRadius: nz(12),
+    paddingVertical: nzVertical(13),
+    alignItems: 'center'
+  },
+  confirmText: {
+    fontSize: rs(14),
+    fontWeight: '700',
+    color: colors.white
+  },
 });
 
 const AlreadyAcceptedModal = memo(({ visible, orderInfo, onClose }) => {
@@ -359,10 +502,7 @@ const OrderItem = memo(({ item }) => {
   );
 });
 OrderItem.displayName = 'OrderItem';
-
-// ─── Order Card ───────────────────────────────────────────────────────────────
-// Custom memo comparison: skip onAction/label/icon — they are stable from parent.
-// Only re-render when order reference, loading state, disabled, or keepSlidOut changes.
+// Updated OrderCardInner component
 const OrderCardInner = ({
   order,
   actionLabel,
@@ -382,14 +522,22 @@ const OrderCardInner = ({
   const toggleExpand = useCallback(() => {
     const next = !expanded;
     setExpanded(next);
-    Animated.spring(chevronAnim, { toValue: next ? 1 : 0, useNativeDriver: true, bounciness: 4, speed: 18 }).start();
+    Animated.spring(chevronAnim, {
+      toValue: next ? 1 : 0,
+      useNativeDriver: true,
+      bounciness: 4,
+      speed: 18
+    }).start();
   }, [expanded, chevronAnim]);
 
   const handleActionPress = useCallback(() => {
     if (actionLoading || disabled || isSlidOut) return;
     playClickSound().catch(() => { });
 
-    if (slideAnim.current) { slideAnim.current.stop(); slideAnim.current = null; }
+    if (slideAnim.current) {
+      slideAnim.current.stop();
+      slideAnim.current = null;
+    }
 
     slideAnim.current = Animated.timing(slideX, {
       toValue: -screenWidth - nz(50),
@@ -397,18 +545,29 @@ const OrderCardInner = ({
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     });
-    slideAnim.current.start(() => { slideAnim.current = null; setIsSlidOut(true); });
+    slideAnim.current.start(() => {
+      slideAnim.current = null;
+      setIsSlidOut(true);
+    });
     onAction(order);
   }, [actionLoading, disabled, isSlidOut, onAction, order, slideX, screenWidth]);
 
-  // Restore card on error (keepSlidOut = false after ghost clears)
   useEffect(() => {
     if (!actionLoading && isSlidOut && !keepSlidOut) {
-      Animated.spring(slideX, { toValue: 0, useNativeDriver: true, bounciness: 6, speed: 14 }).start(() => setIsSlidOut(false));
+      Animated.spring(slideX, {
+        toValue: 0,
+        useNativeDriver: true,
+        bounciness: 6,
+        speed: 14
+      }).start(() => setIsSlidOut(false));
     }
   }, [actionLoading, isSlidOut, keepSlidOut, slideX]);
 
-  const chevronRotate = chevronAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
+  const chevronRotate = chevronAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg']
+  });
+
   const tableLabel = order.seatNo || (order.tableNo != null ? `Table No. ${order.tableNo}` : '—');
   const customerName = order.customer || order.fullname || 'Customer';
   const restName = order.restaurant?.name || order.restaurantName || '—';
@@ -416,20 +575,24 @@ const OrderCardInner = ({
   const totalLabel = order.TotalAmount != null ? `₹${order.TotalAmount}` : `${(order.items || order.order || []).length} items`;
   const rawItems = order.items || order.order || [];
 
+  const memoizedItems = useMemo(() => rawItems, [order._id || order.Id]);
+
   return (
-    <Animated.View style={[styles.cardWrapper, { transform: [{ translateX: slideX }] }, isSlidOut && { opacity: 0.7 }]}>
+    <Animated.View style={[
+      styles.cardWrapper,
+      { transform: [{ translateX: slideX }] },
+      isSlidOut && { opacity: 0.7 }
+    ]}>
       <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.tableChip}>
-            <Ionicons name="location-outline" size={nz(13)} color={colors.white} style={{ marginRight: nz(3) }} />
-            <Text style={styles.tableChipText} numberOfLines={1}>{tableLabel}</Text>
-          </View>
-          <View style={styles.timeChip}>
-            <Ionicons name="time-outline" size={nz(13)} color={colors.textLight} />
-            <Text style={styles.timeChipText}> {ago}</Text>
-          </View>
+        {/* Full Width Location */}
+        <View style={styles.locationFullWidth}>
+          <Ionicons name="location-outline" size={nz(16)} color={colors.white} />
+          <Text style={styles.locationFullWidthText} numberOfLines={2}>
+            {tableLabel}
+          </Text>
         </View>
 
+        {/* Restaurant and Customer Info with Time */}
         <View style={styles.metaRow}>
           <View style={styles.metaBlock}>
             <Text style={styles.metaLabel}>Restaurant</Text>
@@ -440,10 +603,18 @@ const OrderCardInner = ({
               <Text style={styles.metaValue} numberOfLines={1}>{restName}</Text>
             </View>
           </View>
+          <View style={styles.metaDivider} />
           <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>Customer</Text>
+            <View style={styles.customerHeader}>
+              <Text style={styles.metaLabel}>Customer</Text>
+              {/* Time moved here - left of Customer Name */}
+              <View style={styles.timeInline}>
+                <Ionicons name="time-outline" size={nz(11)} color={colors.textLight} />
+                <Text style={styles.timeInlineText}>{ago}</Text>
+              </View>
+            </View>
             <View style={styles.metaValueRow}>
-              <Ionicons name="person" size={nz(18)} color={colors.black} style={{ marginRight: nz(5) }} />
+              <Ionicons name="person" size={nz(16)} color={colors.black} style={{ marginRight: nz(4) }} />
               <Text style={styles.metaValue} numberOfLines={1}>{customerName}</Text>
             </View>
           </View>
@@ -456,7 +627,7 @@ const OrderCardInner = ({
               <Text style={styles.orderDetailsLabel}>Order details</Text>
               <Text style={styles.orderDetailsQty}>Qty</Text>
             </View>
-            {rawItems.map((item, idx) => (
+            {memoizedItems.map((item, idx) => (
               <View key={item.id || item._id || idx}>
                 <OrderItem item={item} />
                 {item.combo_items?.length > 0 && (
@@ -466,7 +637,7 @@ const OrderCardInner = ({
                     ))}
                   </View>
                 )}
-                {idx < rawItems.length - 1 && <View style={styles.itemDivider} />}
+                {idx < memoizedItems.length - 1 && <View style={styles.itemDivider} />}
               </View>
             ))}
             <View style={styles.totalRow}>
@@ -475,17 +646,28 @@ const OrderCardInner = ({
             </View>
 
             <TouchableOpacity
-              style={[styles.actionBtn, actionLoading && styles.actionBtnLoading, disabled && styles.actionBtnDisabled]}
+              style={[
+                styles.actionBtn,
+                actionLoading && styles.actionBtnLoading,
+                disabled && styles.actionBtnDisabled
+              ]}
               onPress={handleActionPress}
               disabled={actionLoading || disabled || isSlidOut}
               activeOpacity={0.85}
             >
-              {actionLoading
-                ? <><ActivityIndicator color={colors.white} size="small" /><Text style={styles.actionBtnText}>Please wait…</Text></>
-                : <>
+              {actionLoading ? (
+                <>
+                  <ActivityIndicator color={colors.white} size="small" />
+                  <Text style={styles.actionBtnText}>Please wait…</Text>
+                </>
+              ) : (
+                <>
                   <Ionicons name={actionIcon} size={nz(19)} color={colors.white} />
-                  <Text style={styles.actionBtnText}>{disabled ? 'Waiting for Handover' : actionLabel}</Text>
-                </>}
+                  <Text style={styles.actionBtnText}>
+                    {disabled ? 'Waiting for Handover' : actionLabel}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
           </>
         )}
@@ -500,7 +682,6 @@ const OrderCardInner = ({
     </Animated.View>
   );
 };
-
 // Custom comparison: only re-render when data meaningful to this card changes
 const OrderCard = memo(OrderCardInner, (prev, next) =>
   prev.order === next.order &&
@@ -827,7 +1008,7 @@ const OngoingScene = memo(({
 OngoingScene.displayName = 'OngoingScene';
 
 export default function HomeScreen({ navigation, route }) {
-  const { user, changeDutytoggal } = useAuthStore();
+  const { user, changeDutytoggal, dutyChangeStep ,error: authError} = useAuthStore();
   const {
     pendingOrders, pendingOrdersLoading,
     acceptedOrders, acceptedOrdersLoading,
@@ -835,7 +1016,6 @@ export default function HomeScreen({ navigation, route }) {
     fetchPendingOrders, fetchAcceptedOrders,
     acceptOrder, markDelivered, clearOrderLists,
   } = useUIStore();
-
   const { width: SW } = useWindowDimensions();
 
   const displayName = user?.fullName || user?.name || 'Waiter';
@@ -958,7 +1138,7 @@ export default function HomeScreen({ navigation, route }) {
   useEffect(() => {
     const tab = route?.params?.initialTab;
     if (tab != null) { setTabIndex(tab); navigation?.setParams?.({ initialTab: undefined }); }
-  }, [route?.params?.initialTab, navigation]); 
+  }, [route?.params?.initialTab, navigation]);
 
   useEffect(() => {
     if (isOnDuty == null) return;
@@ -1073,16 +1253,22 @@ export default function HomeScreen({ navigation, route }) {
     setDutyLoading(true);
     const result = await changeDutytoggal(pendingToggle);
     setDutyLoading(false);
+
     if (result?.success) {
       setModalVisible(false);
       showToast.current?.(
         pendingToggle ? 'You are now On Duty. Orders incoming.' : 'You are now Off Duty.',
         pendingToggle ? 'success' : 'info'
       );
-      if (pendingToggle) setTimeout(() => { actionsRef.current.fetchPendingOrders(); actionsRef.current.fetchAcceptedOrders(); }, 500);
+      if (pendingToggle) {
+        setTimeout(() => {
+          actionsRef.current.fetchPendingOrders();
+          actionsRef.current.fetchAcceptedOrders();
+        }, 500);
+      }
     } else {
+      // Don't close modal on location error - let user see the error
       showToast.current?.(result?.error || 'Something went wrong. Try again.', 'error');
-      setModalVisible(false);
     }
   }, [changeDutytoggal, pendingToggle]);
 
@@ -1259,6 +1445,8 @@ export default function HomeScreen({ navigation, route }) {
         onConfirm={handleConfirm}
         onCancel={handleCancel}
         isLoading={dutyLoading}
+        dutyChangeStep={dutyChangeStep}
+        error={authError}
       />
       <Toast toastRef={showToast} />
       <AlreadyAcceptedModal
@@ -1272,70 +1460,350 @@ export default function HomeScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.white },
-  topSection: { paddingHorizontal: nz(20), paddingTop: nzVertical(14), paddingBottom: nzVertical(14), backgroundColor: colors.white },
-  greetingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  greetingBold: { fontSize: rs(isTablet ? 26 : 22), fontWeight: '700', color: colors.black, fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'System' },
+  topSection: {
+    paddingHorizontal: nz(20),
+    paddingTop: nzVertical(14),
+    paddingBottom: nzVertical(14),
+    backgroundColor: colors.white
+  },
+  greetingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  greetingBold: {
+    fontSize: rs(isTablet ? 26 : 22),
+    fontWeight: '700',
+    color: colors.black,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'System'
+  },
   greetingLight: { fontWeight: '400', color: colors.textLight },
-  dutyStatusRow: { flexDirection: 'row', alignItems: 'center', marginTop: nzVertical(4), gap: nz(5) },
+  dutyStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: nzVertical(4),
+    gap: nz(5)
+  },
   dutyDot: { width: nz(7), height: nz(7), borderRadius: nz(3.5) },
-  dutyStatusText: { fontSize: rs(11), fontWeight: '600', fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System' },
+  dutyStatusText: {
+    fontSize: rs(11),
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System'
+  },
 
   switchTrack: { justifyContent: 'center' },
-  switchThumb: { position: 'absolute', backgroundColor: colors.white, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+  switchThumb: {
+    position: 'absolute',
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3
+  },
 
-  pageContent: { paddingHorizontal: nz(16), paddingTop: nzVertical(14), gap: nzVertical(12), flexGrow: 1 },
+  pageContent: {
+    paddingHorizontal: nz(16),
+    paddingTop: nzVertical(14),
+    gap: nzVertical(12),
+    flexGrow: 1
+  },
 
-  lottieEmptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: nzVertical(40) },
+  lottieEmptyWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: nzVertical(40)
+  },
   lottieAnim: { width: nz(200), height: nz(200) },
-  lottieLabel: { fontSize: rs(17), fontWeight: '700', color: colors.text, marginTop: nzVertical(8), fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'System' },
-  lottieSub: { fontSize: rs(13), color: colors.textLight, textAlign: 'center', paddingHorizontal: nz(32), lineHeight: nzVertical(20), marginTop: nzVertical(6) },
+  lottieLabel: {
+    fontSize: rs(17),
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: nzVertical(8),
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'System'
+  },
+  lottieSub: {
+    fontSize: rs(13),
+    color: colors.textLight,
+    textAlign: 'center',
+    paddingHorizontal: nz(32),
+    lineHeight: nzVertical(20),
+    marginTop: nzVertical(6)
+  },
 
-  offDutyContainer: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: nz(32) },
+  offDutyContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: nz(32)
+  },
   offDutyWrap: { alignItems: 'center', gap: nzVertical(10) },
   pandaAnim: { width: nz(240), height: nz(240) },
   offDutyTitle: { fontSize: rs(20), fontWeight: '700', color: colors.text },
-  offDutySwitchWrap: { alignItems: 'center', gap: nzVertical(10), marginTop: nzVertical(4) },
+  offDutySwitchWrap: {
+    alignItems: 'center',
+    gap: nzVertical(10),
+    marginTop: nzVertical(4)
+  },
 
+  // Card Styles
   cardWrapper: { marginBottom: nzVertical(14), borderRadius: nz(16) },
-  card: { backgroundColor: colors.white, borderRadius: nz(16), shadowColor: '#000', shadowOpacity: 0.09, shadowRadius: nz(14), shadowOffset: { width: 0, height: nzVertical(4) }, elevation: 5, overflow: 'hidden' },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: nz(16), paddingTop: nzVertical(16), paddingBottom: nzVertical(12), gap: nz(8) },
-  tableChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, borderRadius: nz(20), paddingHorizontal: nz(12), paddingVertical: nzVertical(7), maxWidth: '60%', gap: nz(3) },
-  tableChipText: { color: colors.white, fontSize: rs(12), fontWeight: '700', flexShrink: 1, letterSpacing: 0.1 },
-  timeChip: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: nz(20), paddingHorizontal: nz(10), paddingVertical: nzVertical(6), gap: nz(3) },
-  timeChipText: { fontSize: rs(11), color: colors.textLight, letterSpacing: 0.1 },
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: nz(16),
+    shadowColor: '#000',
+    shadowOpacity: 0.09,
+    shadowRadius: nz(14),
+    shadowOffset: { width: 0, height: nzVertical(4) },
+    elevation: 5,
+    overflow: 'hidden'
+  },
 
-  metaRow: { flexDirection: 'row', paddingHorizontal: nz(16), paddingBottom: nzVertical(14), gap: nz(16) },
-  metaBlock: { flex: 1, minWidth: 0 },
-  metaLabel: { fontSize: rs(10), color: colors.textLighter, marginBottom: nzVertical(5), letterSpacing: 0.4, textTransform: 'uppercase' },
-  metaValueRow: { flexDirection: 'row', alignItems: 'center' },
-  metaValue: { fontSize: rs(14), fontWeight: '600', color: colors.black, flexShrink: 1, lineHeight: nzVertical(20) },
-  subwayBadge: { width: nz(24), height: nz(24), borderRadius: nz(5), backgroundColor: '#FBBC04', justifyContent: 'center', alignItems: 'center', marginRight: nz(6), flexShrink: 0 },
-  subwayBadgeText: { color: '#1B5E20', fontWeight: '900', fontSize: rs(13) },
+  // Full Width Location Bar
+  locationFullWidth: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.primary,
+    paddingHorizontal: nz(16),
+    paddingVertical: nzVertical(10),
+    gap: nz(8),
+    minHeight: nzVertical(40),
+  },
+  locationFullWidthText: {
+    color: colors.white,
+    fontSize: rs(13),
+    fontWeight: '700',
+    flex: 1,
+    flexWrap: 'wrap',
+    lineHeight: nzVertical(20),
+  },
 
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginHorizontal: nz(16), marginBottom: nzVertical(10) },
-  orderDetailsHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: nz(16), paddingBottom: nzVertical(6), paddingTop: nzVertical(2) },
-  orderDetailsLabel: { fontSize: rs(11), color: colors.textLight, fontWeight: '600', letterSpacing: 0.3 },
-  orderDetailsQty: { fontSize: rs(11), color: colors.textLight, fontWeight: '600', letterSpacing: 0.3 },
+  // Meta Row
+  metaRow: {
+    flexDirection: 'row',
+    paddingHorizontal: nz(16),
+    paddingVertical: nzVertical(14),
+    gap: nz(12),
+    alignItems: 'flex-start',
+  },
+  metaBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  metaDivider: {
+    width: 1,
+    backgroundColor: colors.border,
+    alignSelf: 'stretch',
+    marginVertical: nzVertical(2),
+  },
 
-  orderItemRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: nz(16), paddingVertical: nzVertical(8), minHeight: nzVertical(44) },
-  foodThumb: { width: nz(40), height: nz(40), borderRadius: nz(8), backgroundColor: '#F4F4F4', justifyContent: 'center', alignItems: 'center', marginRight: nz(8) },
-  vegDot: { width: nz(13), height: nz(13), borderRadius: nz(2), borderWidth: 1.5, justifyContent: 'center', alignItems: 'center', marginRight: nz(6), flexShrink: 0 },
+  // Customer Header with inline time
+  customerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: nzVertical(5),
+  },
+  timeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: nz(3),
+  },
+  timeInlineText: {
+    fontSize: rs(10),
+    color: colors.textLight,
+    fontWeight: '500',
+  },
+
+  metaLabel: {
+    fontSize: rs(10),
+    color: colors.textLighter,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase'
+  },
+  metaValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  metaValue: {
+    fontSize: rs(13),
+    fontWeight: '600',
+    color: colors.black,
+    flexShrink: 1,
+    flex: 1,
+    lineHeight: nzVertical(18),
+    flexWrap: 'wrap',
+  },
+  subwayBadge: {
+    width: nz(24),
+    height: nz(24),
+    borderRadius: nz(5),
+    backgroundColor: '#FBBC04',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: nz(6),
+    flexShrink: 0
+  },
+  subwayBadgeText: {
+    color: '#1B5E20',
+    fontWeight: '900',
+    fontSize: rs(13)
+  },
+
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginHorizontal: nz(16),
+    marginBottom: nzVertical(10)
+  },
+  orderDetailsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: nz(16),
+    paddingBottom: nzVertical(6),
+    paddingTop: nzVertical(2)
+  },
+  orderDetailsLabel: {
+    fontSize: rs(11),
+    color: colors.textLight,
+    fontWeight: '600',
+    letterSpacing: 0.3
+  },
+  orderDetailsQty: {
+    fontSize: rs(11),
+    color: colors.textLight,
+    fontWeight: '600',
+    letterSpacing: 0.3
+  },
+
+  orderItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: nz(16),
+    paddingVertical: nzVertical(8),
+    minHeight: nzVertical(44)
+  },
+  foodThumb: {
+    width: nz(36),
+    height: nz(36),
+    borderRadius: nz(8),
+    backgroundColor: '#F4F4F4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: nz(8)
+  },
+  vegDot: {
+    width: nz(13),
+    height: nz(13),
+    borderRadius: nz(2),
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: nz(6),
+    flexShrink: 0
+  },
   vegDotInner: { width: nz(6), height: nz(6), borderRadius: nz(3) },
-  itemName: { flex: 1, fontSize: rs(13), color: colors.text, lineHeight: nzVertical(18) },
-  itemQty: { fontSize: rs(13), fontWeight: '700', color: colors.black, marginLeft: nz(6), minWidth: nz(28), textAlign: 'right' },
-  itemDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EFEFEF', marginHorizontal: nz(16) },
+  itemName: {
+    flex: 1,
+    fontSize: rs(13),
+    color: colors.text,
+    lineHeight: nzVertical(18),
+    flexShrink: 1,
+  },
+  itemQty: {
+    fontSize: rs(13),
+    fontWeight: '700',
+    color: colors.black,
+    marginLeft: nz(6),
+    minWidth: nz(28),
+    textAlign: 'right',
+    flexShrink: 0,
+  },
+  itemDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#EFEFEF',
+    marginHorizontal: nz(16)
+  },
 
-  comboBlock: { paddingLeft: nz(28), paddingBottom: nzVertical(6) },
-  comboLine: { fontSize: rs(11), color: colors.textLight, lineHeight: nzVertical(18) },
+  comboBlock: {
+    paddingLeft: nz(56),
+    paddingBottom: nzVertical(6)
+  },
+  comboLine: {
+    fontSize: rs(11),
+    color: colors.textLight,
+    lineHeight: nzVertical(18)
+  },
 
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: nz(16), paddingTop: nzVertical(12), paddingBottom: nzVertical(12), backgroundColor: '#FAFAFA', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  totalLabel: { fontSize: rs(13), fontWeight: '700', color: colors.text, letterSpacing: 0.1 },
-  totalValue: { fontSize: rs(15), fontWeight: '800', color: colors.black, letterSpacing: 0.1 },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: nz(16),
+    paddingTop: nzVertical(12),
+    paddingBottom: nzVertical(12),
+    backgroundColor: '#FAFAFA',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border
+  },
+  totalLabel: {
+    fontSize: rs(13),
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: 0.1
+  },
+  totalValue: {
+    fontSize: rs(15),
+    fontWeight: '800',
+    color: colors.black,
+    letterSpacing: 0.1
+  },
 
-  actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: nz(8), marginHorizontal: nz(16), marginBottom: nzVertical(16), borderRadius: nz(12), paddingVertical: nzVertical(Math.max(14, (44 - rs(15) * 1.3) / 2)), minHeight: nzVertical(52), backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.28, shadowRadius: nz(10), shadowOffset: { width: 0, height: nzVertical(4) }, elevation: 5 },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: nz(8),
+    marginHorizontal: nz(16),
+    marginBottom: nzVertical(16),
+    borderRadius: nz(12),
+    paddingVertical: nzVertical(14),
+    minHeight: nzVertical(52),
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.28,
+    shadowRadius: nz(10),
+    shadowOffset: { width: 0, height: nzVertical(4) },
+    elevation: 5
+  },
   actionBtnLoading: { opacity: 0.7 },
-  actionBtnText: { color: colors.white, fontSize: rs(15), fontWeight: '700', letterSpacing: 0.2 },
-  actionBtnDisabled: { backgroundColor: '#B0BEC5', shadowOpacity: 0.10, shadowColor: '#000' },
-  moreDetailsFooter: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF7F4', paddingVertical: nzVertical(13), minHeight: nzVertical(44), gap: nz(6) },
-  moreDetailsText: { fontSize: rs(12), color: colors.text, fontWeight: '500', letterSpacing: 0.1 },
+  actionBtnText: {
+    color: colors.white,
+    fontSize: rs(15),
+    fontWeight: '700',
+    letterSpacing: 0.2
+  },
+  actionBtnDisabled: {
+    backgroundColor: '#B0BEC5',
+    shadowOpacity: 0.10,
+    shadowColor: '#000'
+  },
+  moreDetailsFooter: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#EEF7F4',
+    paddingVertical: nzVertical(13),
+    minHeight: nzVertical(44),
+    gap: nz(6)
+  },
+  moreDetailsText: {
+    fontSize: rs(12),
+    color: colors.text,
+    fontWeight: '500',
+    letterSpacing: 0.1
+  },
 });

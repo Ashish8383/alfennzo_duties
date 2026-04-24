@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
+import LottieView from 'lottie-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
@@ -15,7 +15,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import ComboItemsModal from '../components/pos/ComboItemsModal';
@@ -103,11 +103,10 @@ function ItemRow({ item, quantity, onPress, onAdd, onIncrease, onDecrease }) {
       : item.price || item.comboprice || 0;
 
   const isCombo = item.itemType === 'combo';
-  const imgUri = item.image || item.categoryImage;
+  const imgUri = item.image;
 
   return (
     <TouchableOpacity style={row.wrap} activeOpacity={0.75} onPress={() => onPress(item)}>
-      {/* Thumbnail */}
       <View style={row.imgWrap}>
         {!imgErr && imgUri ? (
           <Image
@@ -121,11 +120,9 @@ function ItemRow({ item, quantity, onPress, onAdd, onIncrease, onDecrease }) {
             <Ionicons name={isCombo ? 'gift-outline' : 'restaurant-outline'} size={nz(22)} color={TEXT_LIGHT} />
           </View>
         )}
-        {/* Veg / Non-veg dot */}
         <View style={[row.vegDot, { backgroundColor: item.isVeg ? '#4CAF50' : '#F44336' }]} />
       </View>
 
-      {/* Info */}
       <View style={row.info}>
         <View style={row.nameRow}>
           <Text style={row.name} numberOfLines={1}>{item.name}</Text>
@@ -144,7 +141,6 @@ function ItemRow({ item, quantity, onPress, onAdd, onIncrease, onDecrease }) {
         )}
       </View>
 
-      {/* Action */}
       <View style={row.action}>
         {quantity === 0 ? (
           <TouchableOpacity
@@ -220,73 +216,28 @@ const row = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.surface,
   },
-  info: {
-    flex: 1,
-    minWidth: 0,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: nz(6),
-    marginBottom: nzVertical(2),
-  },
-  name: {
-    fontSize: rs(14),
-    fontWeight: '600',
-    color: TEXT_PRIMARY,
-    flex: 1,
-    flexShrink: 1,
-  },
-  comboBadge: {
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: nz(5),
-    paddingVertical: nzVertical(1),
-    borderRadius: nz(4),
-    flexShrink: 0,
-  },
+  info: { flex: 1, minWidth: 0 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: nz(6), marginBottom: nzVertical(2) },
+  name: { fontSize: rs(14), fontWeight: '600', color: TEXT_PRIMARY, flex: 1, flexShrink: 1 },
+  comboBadge: { backgroundColor: '#FFF3E0', paddingHorizontal: nz(5), paddingVertical: nzVertical(1), borderRadius: nz(4), flexShrink: 0 },
   comboBadgeText: { fontSize: rs(8), fontWeight: '800', color: '#E65100' },
   price: { fontSize: rs(15), fontWeight: '700', color: PRIMARY, marginBottom: nzVertical(1) },
   cat: { fontSize: rs(11), color: TEXT_LIGHT },
   comboSub: { fontSize: rs(11), color: PRIMARY, opacity: 0.7 },
-  action: {
-    flexShrink: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  action: { flexShrink: 0, alignItems: 'center', justifyContent: 'center' },
   addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: nz(3),
-    borderWidth: 1.5,
-    borderColor: PRIMARY,
-    borderRadius: nz(8),
-    paddingHorizontal: nz(10),
-    paddingVertical: nzVertical(6),
-    backgroundColor: PRIMARY_LIGHT,
+    flexDirection: 'row', alignItems: 'center', gap: nz(3),
+    borderWidth: 1.5, borderColor: PRIMARY, borderRadius: nz(8),
+    paddingHorizontal: nz(10), paddingVertical: nzVertical(6), backgroundColor: PRIMARY_LIGHT,
   },
   addText: { fontSize: rs(12), fontWeight: '700', color: PRIMARY },
   qtyWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: PRIMARY,
-    borderRadius: nz(8),
-    backgroundColor: PRIMARY_LIGHT,
-    overflow: 'hidden',
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1.5, borderColor: PRIMARY, borderRadius: nz(8),
+    backgroundColor: PRIMARY_LIGHT, overflow: 'hidden',
   },
-  qtyBtn: {
-    width: nz(28),
-    height: nz(30),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  qtyText: {
-    fontSize: rs(13),
-    fontWeight: '700',
-    color: TEXT_PRIMARY,
-    minWidth: nz(22),
-    textAlign: 'center',
-  },
+  qtyBtn: { width: nz(28), height: nz(30), justifyContent: 'center', alignItems: 'center' },
+  qtyText: { fontSize: rs(13), fontWeight: '700', color: TEXT_PRIMARY, minWidth: nz(22), textAlign: 'center' },
 });
 
 // ─── Alphabet Strip ────────────────────────────────────────────────────────────
@@ -303,7 +254,6 @@ function AlphaStrip({ availableLetters, selectedLetter, onSelect }) {
         contentContainerStyle={alpha.scroll}
         bounces={false}
       >
-        {/* ALL reset button */}
         <TouchableOpacity
           style={[alpha.allBtn, !selectedLetter && alpha.allBtnActive]}
           onPress={() => onSelect(null)}
@@ -389,24 +339,26 @@ function CategoryChips({ categories, selectedCategory, onSelect }) {
         >
           <Text style={[chip.txt, selectedCategory === 'all' && chip.txtActive]}>All</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[chip.btn, selectedCategory === 'combo' && chip.btnActive]}
-          onPress={() => onSelect(selectedCategory === 'combo' ? 'all' : 'combo')}
-        >
-          <Ionicons
-            name="gift-outline"
-            size={nz(12)}
-            color={selectedCategory === 'combo' ? colors.white : TEXT_SECONDARY}
-            style={{ marginRight: nz(3) }}
-          />
-          <Text style={[chip.txt, selectedCategory === 'combo' && chip.txtActive]}>Combos</Text>
-        </TouchableOpacity>
         {categories.map(cat => (
           <TouchableOpacity
             key={cat._id}
             style={[chip.btn, selectedCategory === cat._id && chip.btnActive]}
             onPress={() => onSelect(selectedCategory === cat._id ? 'all' : cat._id)}
           >
+            {cat.categoryImage ? (
+              <Image
+                source={{ uri: cat.categoryImage }}
+                style={chip.catImg}
+                resizeMode="cover"
+              />
+            ) : (
+              <Ionicons
+                name="grid-outline"
+                size={nz(12)}
+                color={selectedCategory === cat._id ? colors.white : TEXT_SECONDARY}
+                style={{ marginRight: nz(4) }}
+              />
+            )}
             <Text style={[chip.txt, selectedCategory === cat._id && chip.txtActive]} numberOfLines={1}>
               {cat.categoryName}
             </Text>
@@ -432,8 +384,15 @@ const chip = StyleSheet.create({
     paddingVertical: nzVertical(5),
     borderRadius: nz(16),
     backgroundColor: '#F0F0F0',
+    gap: nz(4),
   },
   btnActive: { backgroundColor: PRIMARY },
+  catImg: {
+    width: nz(16),
+    height: nz(16),
+    borderRadius: nz(8),
+    backgroundColor: '#F0F0F0',
+  },
   txt: { fontSize: rs(12), fontWeight: '600', color: TEXT_SECONDARY },
   txtActive: { color: colors.white },
 });
@@ -462,10 +421,8 @@ const lh = StyleSheet.create({
 });
 
 // ─── Main Screen ───────────────────────────────────────────────────────────────
-export default function POSScreen() {
-  const navigation = useNavigation();
+export default function POSScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-
   const [cart, setCart] = useState({});
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedLetter, setSelectedLetter] = useState(null);
@@ -474,15 +431,14 @@ export default function POSScreen() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [showComboModal, setShowComboModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dutyLoading, setDutyLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const searchRef = useRef(null);
   const listRef = useRef(null);
 
-  const { posMenu, posMenuError, fetchPOSMenu, restaurantInfo } = useUIStore();
-  const { user, changeDutytoggal } = useAuthStore();
+  const { posMenu, posMenuError, fetchPOSMenu } = useUIStore();
+  const { user } = useAuthStore();
 
   const isOnDuty = user?.isOnDuty === true;
 
@@ -504,13 +460,6 @@ export default function POSScreen() {
     setRefreshing(false);
   };
 
-  const handleToggleDuty = async () => {
-    setDutyLoading(true);
-    const result = await changeDutytoggal(!isOnDuty);
-    setDutyLoading(false);
-    if (!result.success) Alert.alert('Error', result.error || 'Failed to update duty status');
-  };
-
   // Merge all items into one unified sorted list
   const allItems = useMemo(() => {
     const regular = (posMenu?.regularItems ?? []).map(it => ({ ...it, itemType: 'regular' }));
@@ -524,7 +473,6 @@ export default function POSScreen() {
     );
   }, [posMenu]);
 
-  // Available alphabet letters from current items
   const availableLetters = useMemo(() => {
     const set = new Set();
     allItems.forEach(it => {
@@ -535,18 +483,15 @@ export default function POSScreen() {
     return set;
   }, [allItems]);
 
-  // Apply filters
   const filteredItems = useMemo(() => {
     let items = allItems;
 
-    // Category filter
     if (selectedCategory === 'combo') {
       items = items.filter(it => it.itemType === 'combo');
     } else if (selectedCategory !== 'all') {
       items = items.filter(it => it.categoryId === selectedCategory);
     }
 
-    // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       items = items.filter(it =>
@@ -556,7 +501,6 @@ export default function POSScreen() {
       );
     }
 
-    // Alphabet filter
     if (selectedLetter) {
       items = items.filter(it => {
         const first = (it.name || '').trim().charAt(0).toUpperCase();
@@ -568,10 +512,8 @@ export default function POSScreen() {
     return items;
   }, [allItems, selectedCategory, searchQuery, selectedLetter]);
 
-  // Group by first letter for section headers
   const groupedItems = useMemo(() => {
     if (searchQuery.trim() || selectedLetter) {
-      // flat when searching or letter selected
       return [{ key: 'results', items: filteredItems, isFlat: true }];
     }
     const groups = {};
@@ -584,7 +526,6 @@ export default function POSScreen() {
     return Object.keys(groups).sort().map(key => ({ key, items: groups[key] }));
   }, [filteredItems, searchQuery, selectedLetter]);
 
-  // Flat data for FlatList with section letter separators
   const flatData = useMemo(() => {
     const data = [];
     groupedItems.forEach(group => {
@@ -610,7 +551,7 @@ export default function POSScreen() {
         id,
         name: item.name || item.combofoodName || 'Item',
         price: item.price || item.comboprice || 0,
-        image: item.image || item.categoryImage,
+        image: item.image || null,
         isVeg: item.isVeg !== undefined ? item.isVeg : true,
         description: item.description,
         categoryName: item.categoryName,
@@ -667,7 +608,10 @@ export default function POSScreen() {
   const goToCart = () => {
     if (!isOnDuty) { Alert.alert('Off Duty', 'Go on duty to view cart.'); return; }
     if (cartItemsCount === 0) return;
-    navigation.navigate('Cart', { cart, onCartChange: updatedCart => setCart(updatedCart ?? {}) });
+    navigation.navigate('Cart', {
+      cart,
+      onCartChange: updatedCart => setCart(updatedCart ?? {})
+    });
   };
 
   const handleItemPress = item => {
@@ -685,11 +629,11 @@ export default function POSScreen() {
     setSelectedLetter(null);
   }, []);
 
-  const renderRow = useCallback(({ item: row }) => {
-    if (row.type === 'header') {
-      return <SectionLetterHeader letter={row.key} />;
+  const renderRow = useCallback(({ item: rowData }) => {
+    if (rowData.type === 'header') {
+      return <SectionLetterHeader letter={rowData.key} />;
     }
-    const it = row.item;
+    const it = rowData.item;
     const id = it.id || it._id;
     return (
       <ItemRow
@@ -708,65 +652,49 @@ export default function POSScreen() {
     return <View style={styles.divider} />;
   }, []);
 
-  // ── Off Duty State ──────────────────────────────────────────────────────────
-  if (!isInitialLoading && !isOnDuty) {
-    return (
-      <>
-        <StatusBar style="dark" backgroundColor={colors.white} translucent={false} />
-        <SafeAreaView style={styles.container} edges={['top']}>
-          <View style={styles.compactHeader}>
-            <Text style={styles.compactHeaderTitle}>POS</Text>
-            <TouchableOpacity
-              style={[styles.dutyPill, styles.dutyPillOff]}
-              onPress={handleToggleDuty}
-              disabled={dutyLoading}
-              activeOpacity={0.8}
-            >
-              {dutyLoading
-                ? <ActivityIndicator size="small" color={colors.white} />
-                : <>
-                    <View style={[styles.dutyDot, { backgroundColor: '#F44336' }]} />
-                    <Text style={[styles.dutyPillText, { color: '#C62828' }]}>Off Duty</Text>
-                  </>}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.offDutyWrap}>
-            <View style={styles.offDutyIcon}>
-              <Ionicons name="moon-outline" size={nz(64)} color={TEXT_LIGHT} />
-            </View>
-            <Text style={styles.offDutyTitle}>You're Off Duty</Text>
-            <Text style={styles.offDutySub}>Turn on duty to start taking orders</Text>
-            <TouchableOpacity
-              style={styles.goOnDutyBtn}
-              onPress={handleToggleDuty}
-              disabled={dutyLoading}
-              activeOpacity={0.85}
-            >
-              {dutyLoading
-                ? <ActivityIndicator size="small" color={colors.white} />
-                : <>
-                    <Ionicons name="sunny-outline" size={nz(18)} color={colors.white} />
-                    <Text style={styles.goOnDutyText}>Go On Duty</Text>
-                  </>}
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </>
-    );
-  }
-
   // ── Loading State ───────────────────────────────────────────────────────────
   if (isInitialLoading) {
     return (
       <>
         <StatusBar style="dark" backgroundColor={colors.white} translucent={false} />
         <SafeAreaView style={styles.container} edges={['top']}>
-          <View style={styles.compactHeader}>
-            <SkeletonBox width={nz(60)} height={nzVertical(18)} />
-            <SkeletonBox width={nz(90)} height={nzVertical(30)} borderRadius={nz(15)} />
+          <View style={styles.searchHeader}>
+            <SkeletonBox width={nz(60)} height={nzVertical(20)} />
           </View>
           <POSSkeleton />
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  // ── Off Duty State ──────────────────────────────────────────────────────────
+  if (!isInitialLoading && !isOnDuty) {
+    return (
+      <>
+        <StatusBar style="dark" backgroundColor={colors.white} translucent={false} />
+        <SafeAreaView style={styles.container} edges={['top']}>
+          {/* Simple Header */}
+          <View style={styles.searchHeader}>
+            <Text style={styles.headerTitle}>POS</Text>
+            <View style={styles.dutyStatusRow}>
+              <View style={[styles.dutyDot, { backgroundColor: '#FF3B30' }]} />
+              <Text style={[styles.dutyStatusText, { color: '#E53935' }]}>Off Duty</Text>
+            </View>
+          </View>
+
+          {/* Panda Animation */}
+          <View style={styles.offDutyContainer}>
+            <View style={styles.offDutyWrap}>
+              <LottieView 
+                source={require('../assets/images/panda.json')} 
+                autoPlay 
+                loop 
+                style={styles.pandaAnim} 
+              />
+              <Text style={styles.offDutyTitle}>You are Off Duty</Text>
+              <Text style={styles.offDutySub}>Go to Home screen to turn on duty</Text>
+            </View>
+          </View>
         </SafeAreaView>
       </>
     );
@@ -790,39 +718,14 @@ export default function POSScreen() {
     );
   }
 
-  // ── Main UI ─────────────────────────────────────────────────────────────────
+  // ─── Main UI (On Duty) ──────────────────────────────────────────────────────
   return (
     <>
       <StatusBar style="dark" translucent={false} backgroundColor={colors.white} />
       <SafeAreaView style={styles.container} edges={['top']}>
 
-        {/* ── Compact Header ── */}
-        <View style={styles.compactHeader}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.compactHeaderTitle}>POS</Text>
-            {cartItemsCount > 0 && (
-              <View style={styles.cartCountBadge}>
-                <Text style={styles.cartCountText}>{cartItemsCount}</Text>
-              </View>
-            )}
-          </View>
-          <TouchableOpacity
-            style={[styles.dutyPill, styles.dutyPillOn]}
-            onPress={handleToggleDuty}
-            disabled={dutyLoading}
-            activeOpacity={0.8}
-          >
-            {dutyLoading
-              ? <ActivityIndicator size="small" color={PRIMARY} />
-              : <>
-                  <View style={[styles.dutyDot, { backgroundColor: '#4CAF50' }]} />
-                  <Text style={[styles.dutyPillText, { color: '#2E7D32' }]}>On Duty</Text>
-                </>}
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Search Bar (always visible, full width) ── */}
-        <View style={styles.searchWrap}>
+        {/* ── Search Bar Header ── */}
+        <View style={styles.searchHeader}>
           <View style={[styles.searchBox, searchQuery.length > 0 && styles.searchBoxActive]}>
             <Ionicons name="search-outline" size={nz(18)} color={searchQuery ? PRIMARY : TEXT_LIGHT} />
             <TextInput
@@ -841,9 +744,24 @@ export default function POSScreen() {
               </TouchableOpacity>
             )}
           </View>
-          {/* Item count summary */}
+
+          {/* Cart Icon Only */}
+          <View style={styles.headerActions}>
+            {cartItemsCount > 0 && (
+              <TouchableOpacity onPress={goToCart} style={styles.cartBadge}>
+                <Ionicons name="cart" size={nz(20)} color={PRIMARY} />
+                <View style={styles.cartBadgeCount}>
+                  <Text style={styles.cartBadgeCountText}>{cartItemsCount}</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* ── Result Count ── */}
+        <View style={styles.resultCountWrap}>
           <Text style={styles.resultCount}>
-            {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}
+            {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} found
           </Text>
         </View>
 
@@ -889,7 +807,7 @@ export default function POSScreen() {
           <FlatList
             ref={listRef}
             data={flatData}
-            keyExtractor={row => row.id?.toString() || row.key}
+            keyExtractor={rowData => rowData.id?.toString() || rowData.key}
             renderItem={renderRow}
             ItemSeparatorComponent={ItemSeparator}
             showsVerticalScrollIndicator={false}
@@ -942,53 +860,28 @@ export default function POSScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
-
+  
   // ── Header ──
-  compactHeader: {
+  searchHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: nz(14),
     paddingVertical: nzVertical(10),
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: BORDER_COLOR,
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: nz(8) },
-  compactHeaderTitle: { fontSize: rs(20), fontWeight: '800', color: TEXT_PRIMARY, letterSpacing: 0.5 },
-  cartCountBadge: {
-    backgroundColor: PRIMARY,
-    width: nz(20),
-    height: nz(20),
-    borderRadius: nz(10),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cartCountText: { fontSize: rs(10), fontWeight: '800', color: colors.white },
-  dutyPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: nz(5),
-    paddingHorizontal: nz(12),
-    paddingVertical: nzVertical(6),
-    borderRadius: nz(16),
-    borderWidth: 1.5,
-  },
-  dutyPillOn: { backgroundColor: '#F1FFF5', borderColor: '#A5D6A7' },
-  dutyPillOff: { backgroundColor: '#FFF5F5', borderColor: '#FFCDD2' },
-  dutyDot: { width: nz(7), height: nz(7), borderRadius: nz(4) },
-  dutyPillText: { fontSize: rs(12), fontWeight: '700' },
-
-  // ── Search ──
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    paddingHorizontal: nz(14),
-    paddingVertical: nzVertical(8),
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER_COLOR,
     gap: nz(10),
+  },
+  headerTitle: { fontSize: rs(20), fontWeight: '800', color: TEXT_PRIMARY },
+  dutyStatusRow: { flexDirection: 'row', alignItems: 'center', gap: nz(5) },
+  dutyDot: { width: nz(7), height: nz(7), borderRadius: nz(3.5) },
+  dutyStatusText: { fontSize: rs(12), fontWeight: '600' },
+  
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: nz(8),
+    flexShrink: 0,
   },
   searchBox: {
     flex: 1,
@@ -999,7 +892,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: nz(12),
     height: nzVertical(44),
     borderWidth: 1.5,
-    borderColor: 'transparent',
+    borderColor: '#d9d6d6',
     gap: nz(8),
   },
   searchBoxActive: {
@@ -1012,17 +905,68 @@ const styles = StyleSheet.create({
     color: TEXT_PRIMARY,
     paddingVertical: 0,
   },
+  
+  cartBadge: {
+    position: 'relative',
+    padding: nz(4),
+  },
+  cartBadgeCount: {
+    position: 'absolute',
+    top: -nz(4),
+    right: -nz(4),
+    backgroundColor: PRIMARY,
+    minWidth: nz(18),
+    height: nz(18),
+    borderRadius: nz(9),
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  cartBadgeCountText: { fontSize: rs(10), fontWeight: '800', color: colors.white },
+  
+  resultCountWrap: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: nz(14),
+    paddingVertical: nzVertical(4),
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER_COLOR,
+  },
   resultCount: {
     fontSize: rs(11),
     fontWeight: '600',
     color: TEXT_LIGHT,
-    minWidth: nz(44),
-    textAlign: 'right',
   },
 
-  // ── List ──
   listContent: { backgroundColor: BG },
   divider: { height: 1, backgroundColor: BORDER_COLOR, marginLeft: nz(82) },
+
+  // ── Off Duty ──
+  offDutyContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    paddingHorizontal: nz(40) 
+  },
+  offDutyWrap: { 
+    alignItems: 'center', 
+    gap: nzVertical(10) 
+  },
+  pandaAnim: { 
+    width: nz(220), 
+    height: nz(220) 
+  },
+  offDutyTitle: { 
+    fontSize: rs(22), 
+    fontWeight: '700', 
+    color: TEXT_PRIMARY,
+    marginTop: nzVertical(8)
+  },
+  offDutySub: { 
+    fontSize: rs(14), 
+    color: TEXT_LIGHT, 
+    textAlign: 'center' 
+  },
 
   // ── Empty ──
   emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: nzVertical(80), gap: nzVertical(12) },
@@ -1037,33 +981,4 @@ const styles = StyleSheet.create({
     borderColor: PRIMARY + '30',
   },
   clearFiltersTxt: { fontSize: rs(13), fontWeight: '600', color: PRIMARY },
-
-  // ── Off Duty ──
-  offDutyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: nz(40) },
-  offDutyIcon: {
-    width: nz(120),
-    height: nz(120),
-    borderRadius: nz(60),
-    backgroundColor: '#F5F5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: nzVertical(20),
-  },
-  offDutyTitle: { fontSize: rs(22), fontWeight: '700', color: TEXT_PRIMARY, marginBottom: nzVertical(6) },
-  offDutySub: { fontSize: rs(13), color: TEXT_LIGHT, textAlign: 'center', marginBottom: nzVertical(28) },
-  goOnDutyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: nz(8),
-    backgroundColor: PRIMARY,
-    paddingHorizontal: nz(28),
-    paddingVertical: nzVertical(13),
-    borderRadius: nz(12),
-    shadowColor: PRIMARY,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  goOnDutyText: { fontSize: rs(15), fontWeight: '700', color: colors.white },
 });

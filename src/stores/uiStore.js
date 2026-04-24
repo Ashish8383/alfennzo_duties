@@ -7,7 +7,7 @@ const useUIStore = create((set, get) => ({
   dutyHistoryLoading: false,
   dutyHistoryError: null,
   lastFetchedRange: null,
-
+  cartFormState: null,
   posMenu: null,
   posMenuLoading: false,
   posMenuError: null,
@@ -33,8 +33,8 @@ const useUIStore = create((set, get) => ({
   acceptedOrdersLoading: false,
   acceptedOrdersError: null,
 
-  acceptingOrderIds: {},   
-  deliveringOrderIds: {},  
+  acceptingOrderIds: {},
+  deliveringOrderIds: {},
 
   fetchDutyHistory: async (startDate, endDate) => {
     set({ dutyHistoryLoading: true, dutyHistoryError: null });
@@ -57,6 +57,8 @@ const useUIStore = create((set, get) => ({
       return { error: msg };
     }
   },
+
+  setCartFormState: (state) => set({ cartFormState: state }),
 
   fetchPOSMenu: async () => {
     set({ posMenuLoading: true, posMenuError: null });

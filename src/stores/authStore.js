@@ -10,18 +10,18 @@ import { getDeviceInfo } from '../utils/deviceinfo';
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 const extractTokenFields = (data = {}, fallbackEmail = '') => ({
-  id:       data.id   || data._id  || data.userId,
-  name:     data.fullName || data.name || fallbackEmail.split('@')[0],
+  id: data.id || data._id || data.userId,
+  name: data.fullName || data.name || fallbackEmail.split('@')[0],
   fullName: data.fullName || data.name || fallbackEmail.split('@')[0],
-  email:    data.email || fallbackEmail,
-  phone:    data.phone ? String(data.phone) : '',
-  role:     data.role || 'waiter',
+  email: data.email || fallbackEmail,
+  phone: data.phone ? String(data.phone) : '',
+  role: data.role || 'waiter',
 
-  accessToken:  data.accessToken  || data.token,
-  token:        data.accessToken  || data.token,   
+  accessToken: data.accessToken || data.token,
+  token: data.accessToken || data.token,
   refreshToken: data.refreshToken || null,
 
-  accessTokenExpiresAt:  data.accessTokenExpiresAt  || null,
+  accessTokenExpiresAt: data.accessTokenExpiresAt || null,
   refreshTokenExpiresAt: data.refreshTokenExpiresAt || null,
   wasLoggedOutFromAnotherDevice: data.wasLoggedOutFromAnotherDevice ?? false,
   ...data,
@@ -36,6 +36,7 @@ const useAuthStore = create(
       isLoading: false,
       error: null,
       tempEmail: null,
+      dutyChangeStep: null,
 
       login: async (email, password) => {
         set({ isLoading: true, error: null });
@@ -84,22 +85,22 @@ const useAuthStore = create(
               const loc = await Location.getCurrentPositionAsync({});
               coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
             }
-          } catch (_) {}
+          } catch (_) { }
 
           if (!coords) { set({ error: 'Location required', isLoading: false }); return false; }
 
           const payload = {
             email: tempEmail,
             otp,
-            deviceId:   deviceData.deviceFingerprint,
+            deviceId: deviceData.deviceFingerprint,
             deviceInfo: {
-              platform:    deviceData.deviceInfo?.platform    || 'android',
-              osVersion:   deviceData.deviceInfo?.osVersion   || '',
-              appVersion:  deviceData.deviceInfo?.appVersion  || '1.0.0',
+              platform: deviceData.deviceInfo?.platform || 'android',
+              osVersion: deviceData.deviceInfo?.osVersion || '',
+              appVersion: deviceData.deviceInfo?.appVersion || '1.0.0',
               deviceModel: deviceData.deviceInfo?.deviceModel || '',
             },
-            fcmToken:  deviceData.fcmToken,
-            latitude:  coords.latitude,
+            fcmToken: deviceData.fcmToken,
+            latitude: coords.latitude,
             longitude: coords.longitude,
           };
 
@@ -147,10 +148,10 @@ const useAuthStore = create(
 
           const d = body.data || body;
           const tokenFields = {
-            accessToken:           d.accessToken          || d.token,
-            token:                 d.accessToken          || d.token,
-            refreshToken:          d.refreshToken         || refreshToken,
-            accessTokenExpiresAt:  d.accessTokenExpiresAt || null,
+            accessToken: d.accessToken || d.token,
+            token: d.accessToken || d.token,
+            refreshToken: d.refreshToken || refreshToken,
+            accessTokenExpiresAt: d.accessTokenExpiresAt || null,
             refreshTokenExpiresAt: d.refreshTokenExpiresAt || user?.refreshTokenExpiresAt,
           };
 
@@ -171,18 +172,18 @@ const useAuthStore = create(
             set((state) => ({
               user: {
                 ...state.user,
-                fullName:           p.fullName            || state.user?.fullName,
-                name:               p.fullName            || state.user?.name,
-                phone:              p.phone ? String(p.phone) : state.user?.phone,
-                email:              p.email               || state.user?.email,
-                dateOfBirth:        p.dateOfBirth         || state.user?.dateOfBirth,
-                isOnDuty:           p.isOnDuty            ?? state.user?.isOnDuty,
+                fullName: p.fullName || state.user?.fullName,
+                name: p.fullName || state.user?.name,
+                phone: p.phone ? String(p.phone) : state.user?.phone,
+                email: p.email || state.user?.email,
+                dateOfBirth: p.dateOfBirth || state.user?.dateOfBirth,
+                isOnDuty: p.isOnDuty ?? state.user?.isOnDuty,
                 isProfileCompleted: p.isProfileCompleted,
-                isKycCompleted:     p.isKycCompleted,
-                salary:             p.Salary,
-                restaurantId:       p.restaurantId,
+                isKycCompleted: p.isKycCompleted,
+                salary: p.Salary,
+                restaurantId: p.restaurantId,
                 restaurantCoordinate: p.restaurantCoordinate,
-                _profile:           p,
+                _profile: p,
               },
             }));
             return { success: true };
@@ -197,9 +198,9 @@ const useAuthStore = create(
         set({ isLoading: true, error: null });
         try {
           const payload = {};
-          if (fullName    !== undefined) payload.fullName    = fullName;
+          if (fullName !== undefined) payload.fullName = fullName;
           if (dateOfBirth !== undefined) payload.dateOfBirth = dateOfBirth;
-          if (phone       !== undefined) payload.phone       = phone;
+          if (phone !== undefined) payload.phone = phone;
 
           const response = await api.post('/waiter/updateProfile', payload);
 
@@ -232,7 +233,7 @@ const useAuthStore = create(
           }
         } catch (e) {
           const message = e?.response?.data?.message;
-          const status  = e?.response?.data?.statusCode;
+          const status = e?.response?.data?.statusCode;
 
           if (status === 400 && message && !force) {
             return { blocked: true, message };
@@ -242,34 +243,90 @@ const useAuthStore = create(
         set({ user: null, isAuthenticated: false, error: null, tempEmail: null });
       },
 
-      changeDutytoggal: async (isOnDuty) => {
-        set({ isLoading: true, error: null });
-        try {
-          let coords = null;
+    changeDutytoggal: async (isOnDuty) => {
+  set({ isLoading: true, error: null, dutyChangeStep: null });
+
+  try {
+    let coords = null;
+    
+    set({ dutyChangeStep: 'Requesting location permission...' });
+    
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status === 'granted') {
+        set({ dutyChangeStep: 'Fetching your current location...' });
+
+        let retryCount = 0;
+        const maxRetries = 3;
+
+        while (!coords && retryCount < maxRetries) {
           try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status === 'granted') {
-              const loc = await Location.getCurrentPositionAsync({});
-              coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+            if (retryCount > 0) {
+              set({ dutyChangeStep: `Retrying location (${retryCount}/${maxRetries})...` });
             }
-          } catch (_) {}
-          const payload = {
-            isOnDuty,
-            latitude:  coords?.latitude  ?? 0,
-            longitude: coords?.longitude ?? 0,
-          };
-          const response = await api.post('/waiter/changeDutyStatus', payload);
-          if (response.data?.status === true) {
-            set((state) => ({ user: { ...state.user, isOnDuty }, isLoading: false }));
-            return { success: true };
+
+            const loc = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+
+            if (loc && loc.coords) {
+              coords = {
+                latitude: loc.coords.latitude,
+                longitude: loc.coords.longitude,
+              };
+            }
+          } catch (fetchError) {
+            retryCount++;
+            if (retryCount < maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
           }
-          throw new Error(response.data?.message || 'Failed to change duty status');
-        } catch (error) {
-          const msg = error?.response?.data?.message || 'Could not update duty status';
-          set({ error: msg, isLoading: false });
-          return { error: msg };
         }
-      },
+      }
+    } catch (locationError) {
+    }
+
+    // If location failed, use 0,0 as fallback
+    if (!coords) {
+      coords = { latitude: 0, longitude: 0 };
+      set({ dutyChangeStep: 'Location unavailable, continuing...' });
+    } else {
+      set({ dutyChangeStep: 'Location captured!' });
+    }
+
+    // Now perform the duty change with the obtained location
+    if (!isOnDuty) {
+      set({ dutyChangeStep: 'Going off duty...' });
+    } else {
+      set({ dutyChangeStep: 'Going on duty...' });
+    }
+
+    const payload = {
+      isOnDuty,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+    };
+    
+    const response = await api.post('/waiter/changeDutyStatus', payload);
+
+    if (response.data?.status === true) {
+      set((state) => ({
+        user: { ...state.user, isOnDuty },
+        isLoading: false,
+        dutyChangeStep: null
+      }));
+      return { success: true, data: response.data };
+    }
+
+    throw new Error(response.data?.message || 'Failed to change duty status');
+
+  } catch (error) {
+    const msg = error?.response?.data?.message || error.message || 'Could not update duty status';
+    set({ error: msg, isLoading: false, dutyChangeStep: null });
+    return { error: msg };
+  }
+},
 
       forgotPassword: async (email) => {
         try {
@@ -297,8 +354,8 @@ const useAuthStore = create(
         }
       },
 
-      clearError:    () => set({ error: null }),
-      getToken:      () => get().user?.accessToken || get().user?.token || null,
+      clearError: () => set({ error: null }),
+      getToken: () => get().user?.accessToken || get().user?.token || null,
       updateProfile: (data) => set((state) => ({ user: { ...state.user, ...data } })),
     }),
     {

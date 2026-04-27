@@ -18,6 +18,7 @@ import {
   setupNotificationChannel,
 } from './src/utils/notification';
 import { toastConfig } from './src/utils/toastConfig';
+import NoInternetScreen from './src/components/NoInternetScreen';
 
 export default function App() {
   const [showPermissionModal, setShowPermissionModal] = useState(false);
@@ -94,6 +95,7 @@ export default function App() {
         />
       </GlobalLocationTracker>
       <InAppNotification />
+      <NoInternetScreen />
     </SafeAreaProvider>
   );
 }

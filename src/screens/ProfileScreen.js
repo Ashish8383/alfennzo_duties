@@ -29,8 +29,7 @@ import { nz, nzVertical, rs } from '../utils/responsive';
 const HEADER_BG = '#FFFFFF';
 const TERMS_URL = 'https://www.alfennzo.com/qr/terms-condition';
 const PRIVACY_URL = 'https://www.alfennzo.com/qr/privacy-policy';
-const SUPPORT_PHONE = '+919319702754';
-const SUPPORT_EMAIL = 'support@alfennzo.com';
+const SUPPORT_PHONE = '+91 9809807798';
 
 const MENU_ITEMS = [
   { key: 'permissions',  label: 'Permissions',    icon: 'key-outline' },

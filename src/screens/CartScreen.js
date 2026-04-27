@@ -499,7 +499,7 @@ function SeatPickerSheet({ visible, seatingData, onConfirm, onClose, insets }) {
             >
               <Ionicons name="checkmark-circle-outline" size={nz(20)} color={WHITE} />
               <Text style={sh.confirmTxt} numberOfLines={1}>
-                {seat ? `Confirm — ${categoryInfo?.categoryName ? categoryInfo.categoryName + ' ' : ''}Audi ${audi} /${row} ${seat}` : 'Tap a seat to select'}
+                {seat ? `Confirm` : 'Tap a seat to select'}
               </Text>
             </TouchableOpacity>
           )}
@@ -580,7 +580,16 @@ function SuccessSheet({ order, onDone, insets }) {
             {[
               ['Customer', order.customerName || '—'],
               ['Phone', order.phoneNumber],
-              ['Seat', order.categoryName ? `${order.categoryName} Audi ${order.audi} · Row ${order.row} · Seat ${order.seat}` : [order.audi && `Audi ${order.audi}`, order.row && `Row ${order.row}`, order.seat && `Seat ${order.seat}`].filter(Boolean).join(' · ')],
+              ['Seat', (() => {
+                if (order.categoryName) {
+                  return `${order.categoryName}\nAudi ${order.audi} · Row ${order.row} · Seat ${order.seat}`;
+                }
+                return [
+                  order.audi && `Audi ${order.audi}`,
+                  order.row && `Row ${order.row}`,
+                  order.seat && `Seat ${order.seat}`,
+                ].filter(Boolean).join(' · ') || '—';
+              })()],
               ['Payment', (order.paymentMethod || '').toUpperCase()],
             ].map(([k, v]) => (
               <View key={k} style={sx.row}>
@@ -895,7 +904,6 @@ export default function CartScreen({ navigation, route }) {
     const result = await createPOSOrder(orderPayload);
 
     if (result.success) {
-      // Clear form state from store on successful order
       setCartFormState(null);
 
       const od = {
@@ -928,6 +936,31 @@ export default function CartScreen({ navigation, route }) {
         apiResponse: result.data,
       };
       setOrder(od);
+
+    } else if (result.unavailableItems?.length > 0) {
+      // ✅ Build a Set of unavailable _ids for O(1) lookup
+      const unavailableIds = new Set(result.unavailableItems.map(it => it._id));
+
+      // ✅ Remove unavailable items from cart
+      setCart(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(key => {
+          const itemId = updated[key]?._id || updated[key]?.id;
+          if (unavailableIds.has(itemId)) {
+            delete updated[key];
+          }
+        });
+        return updated;
+      });
+
+      // ✅ Show exactly which items were removed
+      const names = result.unavailableItems.map(it => `• ${it.foodName}`).join('\n');
+      Alert.alert(
+        'Items Unavailable',
+        `The following items were removed from your cart as they are currently unavailable:\n\n${names}\n\nYour cart has been updated. Please review and place the order again.`,
+        [{ text: 'Got it', style: 'default' }]
+      );
+
     } else {
       Alert.alert('Order Failed', result.error || 'Could not place order. Please try again.');
     }
@@ -1210,36 +1243,36 @@ const scr = StyleSheet.create({
   backBtn: { width: nz(40), height: nz(40), borderRadius: nz(20), backgroundColor: BG, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: rs(17), fontWeight: '700', color: TEXT1 },
   scroll: { paddingHorizontal: nz(14), paddingTop: nzVertical(14) },
-seatCard: { 
-  backgroundColor: PRIMARY_PALE, 
-  borderRadius: nz(12), 
-  padding: nz(12), 
-  borderWidth: 1, 
-  borderColor: PRIMARY + '30', 
-  gap: nz(8)
-},
-seatCardTop: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: nz(8),
-},
-categoryBadgeFull: {
-  flexDirection: 'row',
-  alignItems: 'flex-start',
-  gap: nz(6),
-  backgroundColor: WHITE,
-  borderRadius: nz(8),
-  padding: nz(8),
-  borderWidth: 1,
-  borderColor: PRIMARY + '20',
-},
-categoryBadgeTextFull: {
-  fontSize: rs(11), 
-  fontWeight: '600', 
-  color: PRIMARY,
-  flex: 1,
-  flexWrap: 'wrap',
-},
+  seatCard: {
+    backgroundColor: PRIMARY_PALE,
+    borderRadius: nz(12),
+    padding: nz(12),
+    borderWidth: 1,
+    borderColor: PRIMARY + '30',
+    gap: nz(8)
+  },
+  seatCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: nz(8),
+  },
+  categoryBadgeFull: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: nz(6),
+    backgroundColor: WHITE,
+    borderRadius: nz(8),
+    padding: nz(8),
+    borderWidth: 1,
+    borderColor: PRIMARY + '20',
+  },
+  categoryBadgeTextFull: {
+    fontSize: rs(11),
+    fontWeight: '600',
+    color: PRIMARY,
+    flex: 1,
+    flexWrap: 'wrap',
+  },
 
   seatCardTitle: {
     fontSize: rs(13),

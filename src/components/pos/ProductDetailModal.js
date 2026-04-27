@@ -1,14 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState } from 'react';
 import {
-    Animated,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '../../utils/colors';
@@ -89,11 +89,6 @@ export default function ProductDetailModal({
                   <VegDot isVeg={product.isVeg} />
                   <Text style={styles.productName}>{product.name}</Text>
                 </View>
-                {product.popular && (
-                  <View style={styles.popularBadge}>
-                    <Text style={styles.popularBadgeText}>Popular</Text>
-                  </View>
-                )}
               </View>
 
               <Text style={styles.productDescription}>{product.description || 'No description available'}</Text>
@@ -121,16 +116,6 @@ export default function ProductDetailModal({
                 <Text style={styles.infoLabel}>Category</Text>
                 <Text style={styles.infoValue}>{product.categoryName}</Text>
               </View>
-
-              {product.rating && (
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Rating</Text>
-                  <View style={styles.ratingContainer}>
-                    <Ionicons name="star" size={nz(16)} color="#FFB800" />
-                    <Text style={styles.ratingText}>{product.rating}</Text>
-                  </View>
-                </View>
-              )}
             </View>
           </ScrollView>
 
@@ -284,16 +269,6 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
   },
   infoValue: {
-    fontSize: rs(14),
-    fontWeight: '500',
-    color: TEXT_PRIMARY,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: nz(4),
-  },
-  ratingText: {
     fontSize: rs(14),
     fontWeight: '500',
     color: TEXT_PRIMARY,

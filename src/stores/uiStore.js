@@ -132,7 +132,6 @@ const useUIStore = create((set, get) => ({
       return { error: msg };
     }
   },
-
   createPOSOrder: async (orderData) => {
     set({ orderCreating: true, orderError: null });
     try {
@@ -143,12 +142,13 @@ const useUIStore = create((set, get) => ({
       }
       throw new Error(response.data?.message || 'Failed to create order');
     } catch (error) {
-      const msg = error?.response?.data?.message || error.message || 'Could not create order';
+      const errData = error?.response?.data;
+      const msg = errData?.message || error.message || 'Could not create order';
+      const unavailableItems = errData?.data?.unavailableItems || [];
       set({ orderError: msg, orderCreating: false });
-      return { error: msg };
+      return { error: msg, unavailableItems };
     }
   },
-
   fetchPendingOrders: async () => {
     set({ pendingOrdersLoading: true, pendingOrdersError: null });
     try {
